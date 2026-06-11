@@ -1,0 +1,26 @@
+name: Documentation Issue
+description: Report a problem or suggest an improvement for the docs
+title: "[Docs]: "
+labels: ["documentation"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Help us improve the LLM Brain documentation!
+  - type: input
+    id: url
+    attributes:
+      label: Documentation URL
+      description: Which page(s) has the issue?
+  - type: textarea
+    id: description
+    attributes:
+      label: Description of the issue
+      description: What is wrong with the current documentation?
+    validations:
+      required: true
+  - type: textarea
+    id: suggested_fix
+    attributes:
+      label: Suggested Fix
+      description: If you have a fix in mind, please describe it here.

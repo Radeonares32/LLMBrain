@@ -1,0 +1,24 @@
+name: Security Hardening
+description: Suggest improvements to LLM Brain's security and data privacy
+title: "[Security]: "
+labels: ["security", "hardening"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Suggest ways to improve security, data sanitization, or privacy in LLM Brain.
+        **NOTE: Do NOT use this template to report a vulnerability. See SECURITY.md instead.**
+  - type: textarea
+    id: area
+    attributes:
+      label: Area of Hardening
+      description: What area needs hardening? (e.g., API keys, code sanitization, prompt injection defenses)
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Hardening Proposal
+      description: Describe your proposed security improvement.
+    validations:
+      required: true

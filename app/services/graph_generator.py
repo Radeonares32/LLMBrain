@@ -1,0 +1,73 @@
+"""Graph generator — builds graph.json and GraphML from entities + relations."""
+
+from __future__ import annotations
+
+from app.models.entity import Entity
+from app.models.graph import GraphEdge, GraphNode, KnowledgeGraph
+from app.models.relation import Relation
+
+
+def build_knowledge_graph(
+    entities: list[Entity],
+    relations: list[Relation],
+    project_id: str,
+) -> KnowledgeGraph:
+    """Build the in-memory knowledge graph."""
+
+    nodes = [
+        GraphNode(
+            id=e.id,
+            label=e.name,
+            type=e.type,
+            metadata={"path": e.path, "confidence": e.confidence},
+        )
+        for e in entities
+    ]
+
+    entity_index = {e.id: e for e in entities}
+
+    edges = []
+    for r in relations:
+        if r.source_entity_id in entity_index and r.target_entity_id in entity_index:
+            edges.append(
+                GraphEdge(
+                    source=r.source_entity_id,
+                    target=r.target_entity_id,
+                    relation=r.relation,
+                    confidence=r.confidence,
+                    evidence=r.evidence,
+                )
+            )
+
+    return KnowledgeGraph(project_id=project_id, nodes=nodes, edges=edges)
+
+
+def graph_to_graphml(graph: KnowledgeGraph) -> str:
+    """Render the knowledge graph as GraphML XML."""
+
+    lines = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<graphml xmlns="http://graphml.graphstruct.org/graphml"',
+        '         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"',
+        '         xsi:schemaLocation="http://graphml.graphstruct.org/graphml">',
+        '  <key id="label" for="node" attr.name="label" attr.type="string"/>',
+        '  <key id="type" for="node" attr.name="type" attr.type="string"/>',
+        '  <key id="relation" for="edge" attr.name="relation" attr.type="string"/>',
+        '  <graph id="G" edgedefault="directed">',
+    ]
+
+    for node in graph.nodes:
+        lines.append(f'    <node id="{node.id}">')
+        lines.append(f'      <data key="label">{node.label}</data>')
+        lines.append(f'      <data key="type">{node.type}</data>')
+        lines.append("    </node>")
+
+    for i, edge in enumerate(graph.edges):
+        lines.append(f'    <edge id="e{i}" source="{edge.source}" target="{edge.target}">')
+        lines.append(f'      <data key="relation">{edge.relation}</data>')
+        lines.append("    </edge>")
+
+    lines.append("  </graph>")
+    lines.append("</graphml>")
+
+    return "\n".join(lines)

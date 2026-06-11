@@ -1,0 +1,30 @@
+name: LLM Provider Request
+description: Request support for a new LLM provider
+title: "[Provider]: "
+labels: ["provider", "enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Requesting integration with a new LLM provider for LLM Brain.
+  - type: input
+    id: provider_name
+    attributes:
+      label: Provider Name
+      description: The name of the LLM provider (e.g., Anthropic, Cohere, LocalAI).
+    validations:
+      required: true
+  - type: input
+    id: api_docs
+    attributes:
+      label: API Documentation Link
+      description: Link to the API documentation for the requested provider.
+    validations:
+      required: true
+  - type: textarea
+    id: use_case
+    attributes:
+      label: Use Case
+      description: Why do you need this provider? What capabilities does it offer over existing ones?
+    validations:
+      required: true

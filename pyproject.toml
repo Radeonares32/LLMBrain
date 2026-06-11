@@ -1,0 +1,87 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "llmbrain"
+version = "0.1.0"
+description = "Engineering knowledge compiler — turns repos and docs into a structured, queryable knowledge base."
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "Apache-2.0"}
+authors = [
+    { name = "Radeonares32" },
+]
+keywords = [
+    "llm", "rag", "knowledge-graph", "documentation",
+    "code-intelligence", "fastapi", "developer-tools",
+    "security", "devops", "engineering-memory"
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Framework :: FastAPI",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Documentation",
+    "Topic :: Software Development :: Build Tools",
+    "Topic :: Security",
+    "Typing :: Typed",
+]
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.30.0",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "python-dotenv>=1.0.0",
+    "httpx>=0.27.0",
+    "jsonschema>=4.20.0",
+    "typer>=0.9.0",
+    "rich>=13.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.24.0",
+    "httpx>=0.27.0",
+    "ruff>=0.5.0",
+    "build>=1.0.0",
+    "twine>=4.0.0",
+]
+providers = []
+web = [
+    "jinja2>=3.0.0",
+]
+all = [
+    "jinja2>=3.0.0",
+]
+
+[project.scripts]
+llmbrain = "llmbrain.cli:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["llmbrain"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"llmbrain/web/templates" = "llmbrain/web/templates"
+"llmbrain/web/static" = "llmbrain/web/static"
+"examples" = "examples"
+"docs" = "docs"
+"README.md" = "README.md"
+"LICENSE" = "LICENSE"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
