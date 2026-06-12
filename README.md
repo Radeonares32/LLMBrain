@@ -57,26 +57,40 @@ From codebase chaos to auditable knowledge, LLM Brain employs a structured pipel
 
 ## Installation
 
-Install the CLI tool via pip:
+Install from GitHub:
 
 ```bash
-pip install llmbrain
-```
-
-For development installation:
-```bash
-git clone https://github.com/<owner>/llmbrain.git
-cd llmbrain
+git clone https://github.com/Radeonares32/LLMBrain.git
+cd LLMBrain
 pip install -e ".[dev,providers,web]"
 ```
 
+Or install directly from the repository:
+
+```bash
+pip install "llmbrain @ git+https://github.com/Radeonares32/LLMBrain.git"
+```
+
+PyPI package installation is coming after the first public release.
+
 ## Quickstart
 
-Build an auditable engineering memory for a project using a production LLM provider:
+Clone the project and run the CLI:
+
+```bash
+git clone https://github.com/Radeonares32/LLMBrain.git
+cd LLMBrain
+pip install -e .
+llmbrain --help
+```
+
+Build an auditable engineering memory for the sample project using a production
+LLM provider:
 
 ```bash
 export DEEPSEEK_API_KEY=...
 llmbrain build examples/sample-project --provider deepseek
+llmbrain token-report examples/sample-project
 ```
 
 Print the token-compact BrainFrame context:
@@ -257,7 +271,7 @@ jobs:
       DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
     steps:
       - uses: actions/checkout@v6
-      - run: pip install llmbrain
+      - run: pip install "llmbrain @ git+https://github.com/Radeonares32/LLMBrain.git"
       - run: llmbrain ci . --provider deepseek --fail-on high
 ```
 
