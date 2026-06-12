@@ -6,10 +6,10 @@ Source-grounded engineering memory compiler for repositories, docs, incidents, A
 
 Traditional RAG retrieves relevant chunks for a question. LLM Brain compiles repositories and documentation into durable, auditable engineering memory: SQLite/JSONL storage, compact BrainFrame context, Markdown/MDX wiki pages, and graph knowledge maps.
 
-[![Build Status](https://img.shields.io/github/actions/workflow/status/owner/llmbrain/ci.yml?branch=main)](https://github.com/owner/llmbrain/actions)
-[![PyPI version](https://img.shields.io/pypi/v/llmbrain)](https://pypi.org/project/llmbrain/)
-[![License](https://img.shields.io/github/license/owner/llmbrain)](LICENSE)
-[![Python Versions](https://img.shields.io/pypi/pyversions/llmbrain)](https://pypi.org/project/llmbrain/)
+[![CI](https://img.shields.io/github/actions/workflow/status/Radeonares32/LLMBrain/ci.yml?branch=main&label=ci)](https://github.com/Radeonares32/LLMBrain/actions/workflows/ci.yml)
+[![Version](https://img.shields.io/badge/version-0.1.0-blue.svg)](pyproject.toml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.11%20%7C%203.12-blue.svg)](pyproject.toml)
 
 ## Why LLM Brain?
 
