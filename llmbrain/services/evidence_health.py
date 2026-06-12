@@ -20,9 +20,7 @@ def _rating(score: int) -> str:
 
 def _has_valid_fact_evidence(fact: Fact) -> bool:
     return any(
-        evidence.path
-        and evidence.start_line > 0
-        and evidence.end_line >= evidence.start_line
+        evidence.path and evidence.start_line > 0 and evidence.end_line >= evidence.start_line
         for evidence in fact.evidence
     )
 

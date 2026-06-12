@@ -72,10 +72,7 @@ def scan_project(root: str | Path, project_id: str) -> list[Document]:
 
     for dirpath, dirnames, filenames in os.walk(root, topdown=True):
         # prune skipped directories in-place
-        dirnames[:] = [
-            d for d in dirnames
-            if not _should_skip_dir(d)
-        ]
+        dirnames[:] = [d for d in dirnames if not _should_skip_dir(d)]
 
         for fname in filenames:
             filepath = Path(dirpath) / fname

@@ -1,8 +1,10 @@
 from typer.testing import CliRunner
-from llmbrain.cli import app
+
 from llmbrain import __version__
+from llmbrain.cli import app
 
 runner = CliRunner()
+
 
 def test_version():
     result = runner.invoke(app, ["version"])

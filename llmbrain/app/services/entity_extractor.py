@@ -6,7 +6,6 @@ MVP uses heuristics; future versions will delegate to an LLM adapter.
 from __future__ import annotations
 
 import re
-from pathlib import PurePosixPath
 from uuid import uuid4
 
 from llmbrain.models.document import Document

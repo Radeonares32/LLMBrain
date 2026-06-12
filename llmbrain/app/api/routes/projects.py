@@ -15,6 +15,7 @@ _svc = ProjectService()
 
 # ── scan & build ────────────────────────────────────────────────────────────
 
+
 @router.post("/scan", response_model=ScanResult)
 async def scan_project(body: ProjectCreate):
     """Scan a local project directory and index its documents."""
@@ -38,6 +39,7 @@ async def build_project(body: ProjectCreate):
 
 
 # ── query endpoints ─────────────────────────────────────────────────────────
+
 
 def _resolve_project(project_id: str):
     project = _svc.get_project(project_id)

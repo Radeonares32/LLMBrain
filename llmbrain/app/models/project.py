@@ -2,21 +2,20 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
 from pydantic import BaseModel, Field
 
 
 def _utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class ProjectCreate(BaseModel):
     """Payload for scanning / building a project."""
 
     path: str = Field(..., description="Absolute path to the project root.")
-    name: Optional[str] = Field(default=None, description="Optional human-friendly name.")
+    name: str | None = Field(default=None, description="Optional human-friendly name.")
 
 
 class Project(BaseModel):

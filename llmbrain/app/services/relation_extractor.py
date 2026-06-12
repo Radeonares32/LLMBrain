@@ -28,9 +28,7 @@ def extract_relations(
         entity_by_name[ent.name.lower()] = ent
 
     # file entity index by path
-    file_entities: dict[str, Entity] = {
-        ent.path: ent for ent in entities if ent.type == "file"
-    }
+    file_entities: dict[str, Entity] = {ent.path: ent for ent in entities if ent.type == "file"}
 
     # from import facts: file --depends_on--> imported_package
     for fact in facts:

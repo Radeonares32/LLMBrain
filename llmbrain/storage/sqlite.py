@@ -39,6 +39,7 @@ def _wiki_sources_from_markdown(content: str) -> list[dict]:
             current["end_line"] = int(end_match.group(1))
     return sources
 
+
 _SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS projects (
     id          TEXT PRIMARY KEY,
@@ -167,8 +168,13 @@ class SQLiteStore:
             cur.execute(
                 "INSERT OR REPLACE INTO projects (id, name, root_path, created_at, updated_at) "
                 "VALUES (?, ?, ?, ?, ?)",
-                (project.id, project.name, project.root_path,
-                 project.created_at.isoformat(), project.updated_at.isoformat()),
+                (
+                    project.id,
+                    project.name,
+                    project.root_path,
+                    project.created_at.isoformat(),
+                    project.updated_at.isoformat(),
+                ),
             )
 
     def get_project(self, project_id: str) -> Project | None:
@@ -178,8 +184,11 @@ class SQLiteStore:
             if row is None:
                 return None
             return Project(
-                id=row["id"], name=row["name"], root_path=row["root_path"],
-                created_at=row["created_at"], updated_at=row["updated_at"],
+                id=row["id"],
+                name=row["name"],
+                root_path=row["root_path"],
+                created_at=row["created_at"],
+                updated_at=row["updated_at"],
             )
 
     # ── documents ───────────────────────────────────────────────────────
@@ -420,8 +429,12 @@ class SQLiteStore:
                 (project_id,),
             )
             tables = [
-                "wiki_pages", "relations", "entities",
-                "facts", "chunks", "documents",
+                "wiki_pages",
+                "relations",
+                "entities",
+                "facts",
+                "chunks",
+                "documents",
             ]
             for table in tables:
                 cur.execute(f"DELETE FROM {table} WHERE project_id = ?", (project_id,))

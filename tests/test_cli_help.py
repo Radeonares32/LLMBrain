@@ -1,7 +1,9 @@
 from typer.testing import CliRunner
+
 from llmbrain.cli import app
 
 runner = CliRunner()
+
 
 def test_help():
     result = runner.invoke(app, ["--help"])

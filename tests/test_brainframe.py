@@ -7,12 +7,7 @@ from llmbrain.formats.brainframe import (
 
 
 def test_brainframe_basic():
-    bf = build_compact_context(
-        project_name="test_project",
-        entities=[],
-        relations=[],
-        facts=[]
-    )
+    bf = build_compact_context(project_name="test_project", entities=[], relations=[], facts=[])
     assert "@project test_project" in bf
 
 

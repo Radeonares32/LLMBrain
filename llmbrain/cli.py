@@ -28,7 +28,7 @@ def version():
 def serve(
     host: str = typer.Option("0.0.0.0", help="Host IP"),
     port: int = typer.Option(8000, help="Port"),
-    reload: bool = typer.Option(False, help="Reload on changes")
+    reload: bool = typer.Option(False, help="Reload on changes"),
 ):
     """Start the FastAPI server."""
     uvicorn.run("llmbrain.main:app", host=host, port=port, reload=reload)
@@ -38,7 +38,7 @@ def serve(
 def scan(
     path: str,
     json_out: bool = typer.Option(False, "--json", help="Output JSON"),
-    output: str = typer.Option(None, "--output", help="Output file")
+    output: str = typer.Option(None, "--output", help="Output file"),
 ):
     """Scan a project directory without building."""
     service = ProjectService()
@@ -74,7 +74,7 @@ def build(
         help="Use incremental build if possible",
     ),
     json_out: bool = typer.Option(False, "--json", help="Output JSON"),
-    output_dir: str = typer.Option(None, "--output-dir", help="Output directory override")
+    output_dir: str = typer.Option(None, "--output-dir", help="Output directory override"),
 ):
     """Run the full build pipeline."""
     service = ProjectService()
@@ -113,7 +113,7 @@ def context(
     path: str,
     json_out: bool = typer.Option(False, "--json", help="Output JSON"),
     print_out: bool = typer.Option(False, "--print", help="Print context to stdout"),
-    output: str = typer.Option(None, "--output", help="Output file path")
+    output: str = typer.Option(None, "--output", help="Output file path"),
 ):
     """Print the BrainFrame context for a project."""
     root = output_root(path)
@@ -136,10 +136,11 @@ def context(
 def diff(
     path: str,
     base_ref: str = typer.Option(None, "--base-ref", help="Base ref to compare against"),
-    json_out: bool = typer.Option(False, "--json", help="Output JSON")
+    json_out: bool = typer.Option(False, "--json", help="Output JSON"),
 ):
     """Show git diff."""
     from llmbrain.services.git_diff import analyze_git_diff
+
     changed_files = analyze_git_diff(path, base_ref)
 
     if json_out:
@@ -155,7 +156,7 @@ def diff(
 def graph(
     path: str,
     format: str = typer.Option("json", "--format", help="json | graphml"),
-    output: str = typer.Option(None, "--output", help="Output file path")
+    output: str = typer.Option(None, "--output", help="Output file path"),
 ):
     """Show graph status."""
     service = ProjectService()
@@ -180,7 +181,7 @@ def ci(
         help="Risk level to fail on: low | medium | high",
     ),
     provider: str = typer.Option(settings.default_provider, "--provider", help="LLM provider"),
-    output_json: str = typer.Option(None, "--output-json", help="Output JSON file")
+    output_json: str = typer.Option(None, "--output-json", help="Output JSON file"),
 ):
     """Run LLM Brain in CI mode."""
     console.print(f"Running CI on {path}")
@@ -222,10 +223,7 @@ def ci(
 
 
 @app.command()
-def health(
-    path: str,
-    json_out: bool = typer.Option(False, "--json", help="Output JSON")
-):
+def health(path: str, json_out: bool = typer.Option(False, "--json", help="Output JSON")):
     """Check evidence health score for a project."""
     service = ProjectService()
     try:

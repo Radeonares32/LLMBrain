@@ -77,9 +77,12 @@ def _fact_context(fact_rows: list[dict], limit: int = 5) -> str:
             if path:
                 evidence = f" @{path}:L{start}-L{end}"
                 break
-        claim = fact.get("claim") or " ".join(
-            str(fact.get(key, "")) for key in ("subject", "predicate", "object")
-        ).strip()
+        claim = (
+            fact.get("claim")
+            or " ".join(
+                str(fact.get(key, "")) for key in ("subject", "predicate", "object")
+            ).strip()
+        )
         if claim:
             lines.append(f"- {claim}{evidence}")
     return "\n".join(lines) + "\n"

@@ -40,10 +40,7 @@ def build_compact_context(
     # ── entities ────────────────────────────────────────────────────────
     if entities:
         headers = ["id", "type", "name", "path", "confidence"]
-        rows = [
-            [e.id[:8], e.type, e.name, e.path, e.confidence]
-            for e in entities
-        ]
+        rows = [[e.id[:8], e.type, e.name, e.path, e.confidence] for e in entities]
         sections.append("\n#entities\n" + _table(headers, rows))
 
     # ── relations ───────────────────────────────────────────────────────
@@ -53,13 +50,15 @@ def build_compact_context(
         for r in relations:
             src = entity_index.get(r.source_entity_id)
             tgt = entity_index.get(r.target_entity_id)
-            rows.append([
-                src.name if src else r.source_entity_id[:8],
-                r.relation,
-                tgt.name if tgt else r.target_entity_id[:8],
-                r.evidence,
-                r.confidence,
-            ])
+            rows.append(
+                [
+                    src.name if src else r.source_entity_id[:8],
+                    r.relation,
+                    tgt.name if tgt else r.target_entity_id[:8],
+                    r.evidence,
+                    r.confidence,
+                ]
+            )
         sections.append("\n#relations\n" + _table(headers, rows))
 
     # ── facts ───────────────────────────────────────────────────────────

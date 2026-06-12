@@ -326,7 +326,9 @@ def create_provider(provider_name: str | None = None) -> BaseLLMProvider:
             raise LLMProviderError("OLLAMA_MODEL is required for provider 'ollama'.")
         return OllamaProvider(
             model=model,
-            base_url=_env("OLLAMA_BASE_URL", "LLMBRAIN_OLLAMA_BASE_URL", default="http://localhost:11434")
+            base_url=_env(
+                "OLLAMA_BASE_URL", "LLMBRAIN_OLLAMA_BASE_URL", default="http://localhost:11434"
+            )
             or "http://localhost:11434",
         )
 

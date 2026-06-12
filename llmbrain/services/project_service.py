@@ -92,6 +92,7 @@ class ProjectService:
     def _project_id_from_path(path: Path) -> str:
         """Deterministic project id so re-scanning the same path reuses state."""
         import hashlib
+
         return hashlib.sha256(str(path).encode()).hexdigest()[:16]
 
     def _store(self, project_root: Path) -> SQLiteStore:
@@ -115,8 +116,7 @@ class ProjectService:
             return [], chunks, [], documents
 
         previous_doc_hashes = {
-            str(row.get("relative_path", "")): _document_hash(row)
-            for row in previous_documents
+            str(row.get("relative_path", "")): _document_hash(row) for row in previous_documents
         }
         unchanged_doc_paths = {
             doc.relative_path
@@ -130,8 +130,7 @@ class ProjectService:
             if str(row.get("path", "")) in unchanged_doc_paths
         }
         current_chunks_by_evidence = {
-            (chunk.path, chunk.start_line, chunk.end_line): chunk
-            for chunk in chunks
+            (chunk.path, chunk.start_line, chunk.end_line): chunk for chunk in chunks
         }
 
         reusable_facts: list[Fact] = []
@@ -174,9 +173,7 @@ class ProjectService:
             reusable_facts.append(fact)
 
         chunks_to_extract = [
-            chunk
-            for chunk in chunks
-            if _chunk_key(chunk) not in previous_chunk_keys
+            chunk for chunk in chunks if _chunk_key(chunk) not in previous_chunk_keys
         ]
 
         reusable_entities: list[Entity] = []
@@ -186,11 +183,7 @@ class ProjectService:
                 continue
             reusable_entities.append(Entity.model_validate({**row, "project_id": project_id}))
 
-        docs_to_extract = [
-            doc
-            for doc in documents
-            if doc.relative_path not in unchanged_doc_paths
-        ]
+        docs_to_extract = [doc for doc in documents if doc.relative_path not in unchanged_doc_paths]
         return reusable_facts, chunks_to_extract, reusable_entities, docs_to_extract
 
     def _reuse_relations(self, dirs: dict[str, Path], project_id: str) -> list[Relation]:
@@ -286,25 +279,33 @@ class ProjectService:
         )
         should_reuse_relations = req.incremental and not chunks_to_extract and not docs_to_extract
         provider = None if should_reuse_relations else create_provider(req.llm_provider)
-        extracted_facts = asyncio.run(
-            extract_facts(
-                chunks_to_extract,
-                project_id,
-                provider,
-                cache=cache,
-                concurrency=settings.llm_concurrency,
+        extracted_facts = (
+            asyncio.run(
+                extract_facts(
+                    chunks_to_extract,
+                    project_id,
+                    provider,
+                    cache=cache,
+                    concurrency=settings.llm_concurrency,
+                )
             )
-        ) if provider else []
+            if provider
+            else []
+        )
         facts = redact_model_strings([*reusable_facts, *extracted_facts])
-        extracted_entities = asyncio.run(
-            extract_entities(
-                docs_to_extract,
-                project_id,
-                provider,
-                cache=cache,
-                concurrency=settings.llm_concurrency,
+        extracted_entities = (
+            asyncio.run(
+                extract_entities(
+                    docs_to_extract,
+                    project_id,
+                    provider,
+                    cache=cache,
+                    concurrency=settings.llm_concurrency,
+                )
             )
-        ) if provider else []
+            if provider
+            else []
+        )
         entities = redact_model_strings([*reusable_entities, *extracted_entities])
         if should_reuse_relations:
             relations = self._reuse_relations(dirs, project_id)
@@ -366,12 +367,15 @@ class ProjectService:
             relations=len(relations),
             wiki_pages=len(wiki_pages),
         )
-        write_manifest(root, {
-            "project_id": project_id,
-            "project_name": name,
-            "root_path": str(root),
-            "stats": stats.model_dump(),
-        })
+        write_manifest(
+            root,
+            {
+                "project_id": project_id,
+                "project_name": name,
+                "root_path": str(root),
+                "stats": stats.model_dump(),
+            },
+        )
 
         return BuildResult(
             project=project,
@@ -594,9 +598,16 @@ class ProjectService:
                     "type": {
                         "type": "string",
                         "enum": [
-                            "service", "module", "api_endpoint", "database",
-                            "queue", "config", "env_var", "dependency",
-                            "file", "package",
+                            "service",
+                            "module",
+                            "api_endpoint",
+                            "database",
+                            "queue",
+                            "config",
+                            "env_var",
+                            "dependency",
+                            "file",
+                            "package",
                         ],
                     },
                     "path": {"type": "string"},
@@ -613,8 +624,14 @@ class ProjectService:
                     "relation": {
                         "type": "string",
                         "enum": [
-                            "depends_on", "calls", "exposes", "reads_from",
-                            "writes_to", "configured_by", "documented_by", "related_to",
+                            "depends_on",
+                            "calls",
+                            "exposes",
+                            "reads_from",
+                            "writes_to",
+                            "configured_by",
+                            "documented_by",
+                            "related_to",
                         ],
                     },
                     "target": {"type": "string"},

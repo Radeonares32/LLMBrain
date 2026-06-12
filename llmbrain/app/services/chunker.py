@@ -52,7 +52,7 @@ def chunk_document(
                 document_id=doc.id,
                 path=doc.relative_path,
                 start_line=start + 1,  # 1-indexed
-                end_line=end,           # inclusive
+                end_line=end,  # inclusive
                 content=content,
                 content_hash=_content_hash(content),
             )

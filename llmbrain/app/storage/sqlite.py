@@ -4,14 +4,14 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Generator
 
 from llmbrain.models.chunk import Chunk
 from llmbrain.models.document import Document
 from llmbrain.models.entity import Entity
-from llmbrain.models.fact import Fact, FactEvidence
+from llmbrain.models.fact import Fact
 from llmbrain.models.project import Project
 from llmbrain.models.relation import Relation
 from llmbrain.models.wiki import WikiPage
@@ -144,8 +144,13 @@ class SQLiteStore:
             cur.execute(
                 "INSERT OR REPLACE INTO projects (id, name, root_path, created_at, updated_at) "
                 "VALUES (?, ?, ?, ?, ?)",
-                (project.id, project.name, project.root_path,
-                 project.created_at.isoformat(), project.updated_at.isoformat()),
+                (
+                    project.id,
+                    project.name,
+                    project.root_path,
+                    project.created_at.isoformat(),
+                    project.updated_at.isoformat(),
+                ),
             )
 
     def get_project(self, project_id: str) -> Project | None:
@@ -155,8 +160,11 @@ class SQLiteStore:
             if row is None:
                 return None
             return Project(
-                id=row["id"], name=row["name"], root_path=row["root_path"],
-                created_at=row["created_at"], updated_at=row["updated_at"],
+                id=row["id"],
+                name=row["name"],
+                root_path=row["root_path"],
+                created_at=row["created_at"],
+                updated_at=row["updated_at"],
             )
 
     # ── documents ───────────────────────────────────────────────────────
@@ -165,18 +173,32 @@ class SQLiteStore:
         with self._cursor() as cur:
             cur.executemany(
                 "INSERT OR REPLACE INTO documents "
-                "(id, project_id, path, relative_path, content_hash, file_type, language, line_count, size_bytes, created_at) "
+                "(id, project_id, path, relative_path, content_hash, file_type, "
+                "language, line_count, size_bytes, created_at) "
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 [
-                    (d.id, d.project_id, d.path, d.relative_path, d.content_hash,
-                     d.file_type, d.language, d.line_count, d.size_bytes, d.created_at.isoformat())
+                    (
+                        d.id,
+                        d.project_id,
+                        d.path,
+                        d.relative_path,
+                        d.content_hash,
+                        d.file_type,
+                        d.language,
+                        d.line_count,
+                        d.size_bytes,
+                        d.created_at.isoformat(),
+                    )
                     for d in docs
                 ],
             )
 
     def get_documents(self, project_id: str) -> list[dict]:
         with self._cursor() as cur:
-            cur.execute("SELECT * FROM documents WHERE project_id = ? ORDER BY relative_path", (project_id,))
+            cur.execute(
+                "SELECT * FROM documents WHERE project_id = ? ORDER BY relative_path",
+                (project_id,),
+            )
             return [dict(row) for row in cur.fetchall()]
 
     # ── chunks ──────────────────────────────────────────────────────────
@@ -185,18 +207,32 @@ class SQLiteStore:
         with self._cursor() as cur:
             cur.executemany(
                 "INSERT OR REPLACE INTO chunks "
-                "(id, project_id, document_id, path, start_line, end_line, content, content_hash) "
+                "(id, project_id, document_id, path, start_line, end_line, "
+                "content, content_hash) "
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                 [
-                    (c.id, c.project_id, c.document_id, c.path,
-                     c.start_line, c.end_line, c.content, c.content_hash)
+                    (
+                        c.id,
+                        c.project_id,
+                        c.document_id,
+                        c.path,
+                        c.start_line,
+                        c.end_line,
+                        c.content,
+                        c.content_hash,
+                    )
                     for c in chunks
                 ],
             )
 
     def get_chunks(self, project_id: str) -> list[dict]:
         with self._cursor() as cur:
-            cur.execute("SELECT id, project_id, document_id, path, start_line, end_line, content_hash FROM chunks WHERE project_id = ? ORDER BY path, start_line", (project_id,))
+            cur.execute(
+                "SELECT id, project_id, document_id, path, start_line, "
+                "end_line, content_hash FROM chunks WHERE project_id = ? "
+                "ORDER BY path, start_line",
+                (project_id,),
+            )
             return [dict(row) for row in cur.fetchall()]
 
     # ── facts ───────────────────────────────────────────────────────────
@@ -208,20 +244,38 @@ class SQLiteStore:
                     "INSERT OR REPLACE INTO facts "
                     "(id, project_id, subject, predicate, object, claim, confidence, created_at) "
                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                    (f.id, f.project_id, f.subject, f.predicate, f.object,
-                     f.claim, f.confidence, f.created_at.isoformat()),
+                    (
+                        f.id,
+                        f.project_id,
+                        f.subject,
+                        f.predicate,
+                        f.object,
+                        f.claim,
+                        f.confidence,
+                        f.created_at.isoformat(),
+                    ),
                 )
                 for ev in f.evidence:
                     cur.execute(
                         "INSERT OR REPLACE INTO fact_evidence "
                         "(id, fact_id, document_id, path, start_line, end_line) "
                         "VALUES (?, ?, ?, ?, ?, ?)",
-                        (ev.id, ev.fact_id, ev.document_id, ev.path, ev.start_line, ev.end_line),
+                        (
+                            ev.id,
+                            ev.fact_id,
+                            ev.document_id,
+                            ev.path,
+                            ev.start_line,
+                            ev.end_line,
+                        ),
                     )
 
     def get_facts(self, project_id: str) -> list[dict]:
         with self._cursor() as cur:
-            cur.execute("SELECT * FROM facts WHERE project_id = ? ORDER BY subject, predicate", (project_id,))
+            cur.execute(
+                "SELECT * FROM facts WHERE project_id = ? ORDER BY subject, predicate",
+                (project_id,),
+            )
             return [dict(row) for row in cur.fetchall()]
 
     # ── entities ────────────────────────────────────────────────────────
@@ -233,15 +287,25 @@ class SQLiteStore:
                 "(id, project_id, name, type, path, confidence, metadata) "
                 "VALUES (?, ?, ?, ?, ?, ?, ?)",
                 [
-                    (e.id, e.project_id, e.name, e.type, e.path, e.confidence,
-                     json.dumps(e.metadata))
+                    (
+                        e.id,
+                        e.project_id,
+                        e.name,
+                        e.type,
+                        e.path,
+                        e.confidence,
+                        json.dumps(e.metadata),
+                    )
                     for e in entities
                 ],
             )
 
     def get_entities(self, project_id: str) -> list[dict]:
         with self._cursor() as cur:
-            cur.execute("SELECT * FROM entities WHERE project_id = ? ORDER BY type, name", (project_id,))
+            cur.execute(
+                "SELECT * FROM entities WHERE project_id = ? ORDER BY type, name",
+                (project_id,),
+            )
             return [dict(row) for row in cur.fetchall()]
 
     # ── relations ───────────────────────────────────────────────────────
@@ -250,40 +314,65 @@ class SQLiteStore:
         with self._cursor() as cur:
             cur.executemany(
                 "INSERT OR REPLACE INTO relations "
-                "(id, project_id, source_entity_id, relation, target_entity_id, evidence, confidence) "
+                "(id, project_id, source_entity_id, relation, target_entity_id, "
+                "evidence, confidence) "
                 "VALUES (?, ?, ?, ?, ?, ?, ?)",
                 [
-                    (r.id, r.project_id, r.source_entity_id, r.relation,
-                     r.target_entity_id, r.evidence, r.confidence)
+                    (
+                        r.id,
+                        r.project_id,
+                        r.source_entity_id,
+                        r.relation,
+                        r.target_entity_id,
+                        r.evidence,
+                        r.confidence,
+                    )
                     for r in relations
                 ],
             )
 
     def get_relations(self, project_id: str) -> list[dict]:
         with self._cursor() as cur:
-            cur.execute("SELECT * FROM relations WHERE project_id = ? ORDER BY relation", (project_id,))
+            cur.execute(
+                "SELECT * FROM relations WHERE project_id = ? ORDER BY relation",
+                (project_id,),
+            )
             return [dict(row) for row in cur.fetchall()]
 
     # ── wiki pages ──────────────────────────────────────────────────────
 
-    def insert_wiki_pages(self, pages: list[WikiPage], wiki_dir: str = "", mdx_dir: str = "") -> None:
+    def insert_wiki_pages(
+        self,
+        pages: list[WikiPage],
+        wiki_dir: str = "",
+        mdx_dir: str = "",
+    ) -> None:
         with self._cursor() as cur:
             cur.executemany(
                 "INSERT OR REPLACE INTO wiki_pages "
                 "(id, project_id, title, slug, type, markdown_path, mdx_path, confidence) "
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                 [
-                    (p.id, p.project_id, p.title, p.slug, p.type,
-                     f"{wiki_dir}/{p.slug}.md" if wiki_dir else "",
-                     f"{mdx_dir}/{p.slug}.mdx" if mdx_dir else "",
-                     p.confidence)
+                    (
+                        p.id,
+                        p.project_id,
+                        p.title,
+                        p.slug,
+                        p.type,
+                        f"{wiki_dir}/{p.slug}.md" if wiki_dir else "",
+                        f"{mdx_dir}/{p.slug}.mdx" if mdx_dir else "",
+                        p.confidence,
+                    )
                     for p in pages
                 ],
             )
 
     def get_wiki_pages(self, project_id: str) -> list[dict]:
         with self._cursor() as cur:
-            cur.execute("SELECT * FROM wiki_pages WHERE project_id = ? ORDER BY title", (project_id,))
+            cur.execute(
+                "SELECT * FROM wiki_pages WHERE project_id = ? ORDER BY title",
+                (project_id,),
+            )
             return [dict(row) for row in cur.fetchall()]
 
     # ── cleanup ─────────────────────────────────────────────────────────
@@ -298,9 +387,12 @@ class SQLiteStore:
                 (project_id,),
             )
             tables = [
-                "wiki_pages", "relations", "entities",
-                "facts", "chunks", "documents",
+                "wiki_pages",
+                "relations",
+                "entities",
+                "facts",
+                "chunks",
+                "documents",
             ]
             for table in tables:
                 cur.execute(f"DELETE FROM {table} WHERE project_id = ?", (project_id,))
-
