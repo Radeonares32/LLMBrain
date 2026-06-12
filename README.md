@@ -253,10 +253,12 @@ on: [pull_request]
 jobs:
   check-drift:
     runs-on: ubuntu-latest
+    env:
+      DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - run: pip install llmbrain
-      - run: llmbrain ci . --fail-on high
+      - run: llmbrain ci . --provider deepseek --fail-on high
 ```
 
 ## LLM Providers
@@ -274,7 +276,7 @@ See [ROADMAP.md](ROADMAP.md) for planned features, including full SaaS integrati
 We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) and our [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
 
 ## License
-Apache-2.0 License. See [LICENSE](LICENSE) for details.
+MIT License. See [LICENSE](LICENSE) for details.
 
 ---
 

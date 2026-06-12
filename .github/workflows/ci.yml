@@ -1,5 +1,8 @@
 name: CI
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 on:
   push:
     branches: [ "main" ]
@@ -13,11 +16,14 @@ jobs:
       matrix:
         python-version: ["3.11", "3.12"]
     
+    env:
+      DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
         python-version: ${{ matrix.python-version }}
         
@@ -38,8 +44,13 @@ jobs:
     - name: Test version
       run: llmbrain version
       
-    - name: Test Mock Build
-      run: llmbrain build examples/sample-project --mode mock
+    - name: Test scan
+      run: llmbrain scan examples/sample-project
+
+    - name: Test DeepSeek build
+      if: env.DEEPSEEK_API_KEY != ''
+      run: llmbrain build examples/sample-project --provider deepseek
       
     - name: Test CI mode
+      if: env.DEEPSEEK_API_KEY != ''
       run: llmbrain ci examples/sample-project --fail-on high

@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "Engineering knowledge compiler — turns repos and docs into a structured, queryable knowledge base."
 readme = "README.md"
 requires-python = ">=3.11"
-license = {text = "Apache-2.0"}
+license = {text = "MIT"}
 authors = [
     { name = "Radeonares32" },
 ]
@@ -23,7 +23,7 @@ classifiers = [
     "Framework :: FastAPI",
     "Intended Audience :: Developers",
     "Intended Audience :: Information Technology",
-    "License :: OSI Approved :: Apache Software License",
+    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -68,8 +68,6 @@ llmbrain = "llmbrain.cli:app"
 packages = ["llmbrain"]
 
 [tool.hatch.build.targets.wheel.force-include]
-"llmbrain/web/templates" = "llmbrain/web/templates"
-"llmbrain/web/static" = "llmbrain/web/static"
 "examples" = "examples"
 "docs" = "docs"
 "README.md" = "README.md"
