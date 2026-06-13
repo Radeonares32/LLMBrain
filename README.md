@@ -133,55 +133,76 @@ The TUI provides a responsive multi-pane dashboard where you can:
 
 ## CLI Usage
 
-LLM Brain is a CLI-first tool. Some of the core commands include:
+LLM Brain is a CLI-first tool. Its commands are organized into core compilation commands, agent loops, and utility namespaces.
 
-- `llmbrain scan PATH`: Scans a directory and reports supported files.
-- `llmbrain build PATH`: Runs the compilation pipeline.
-- `llmbrain context PATH`: Outputs the generated `.bf` file.
-- `llmbrain diff PATH`: Shows git diffs to track drift.
+### Core Compilation Commands
+- `llmbrain scan PATH`: Scans a directory and reports supported files, ignored files, and hashes.
+- `llmbrain build PATH`: Runs the compilation pipeline (cold build).
+- `llmbrain index PATH`: Builds and refreshes project index database incrementally (uses cached elements based on file hashes).
+- `llmbrain context PATH`: Outputs the generated token-compact BrainFrame (`.bf`) file.
+- `llmbrain diff PATH`: Shows git diffs and tracks memory drift.
 - `llmbrain health PATH`: Generates an evidence health score for the repository.
-- `llmbrain token-report PATH`: Compares JSON-style context with BrainFrame context.
-- `llmbrain serve`: Boots the FastAPI server for programmatic access.
-- `llmbrain doctor`: Runs diagnostic health checks on databases and the environment.
-- `llmbrain logs`: Prints application logs location.
+- `llmbrain token-report PATH`: Compares JSON-style context size with BrainFrame context size.
 - `llmbrain search "<query>"`: Performs semantic search over the compiled project memory (chunks, facts, entities) using local embeddings.
-- `llmbrain repo <subcommand>`: Manages multi-repository registrations.
-  - `add PATH`: Register a local codebase root into the registry.
-  - `remove PROJECT_ID`: Remove a codebase from the registry.
-  - `list`: List all registered project paths, IDs, and tags.
-  - `tag PROJECT_ID TAG`: Add a classification tag to a registered repository.
+- `llmbrain doctor`: Runs diagnostic health checks on databases and the environment.
+- `llmbrain config`: Prints active configuration settings (API providers, models, local directories).
+- `llmbrain logs`: Prints application logs location.
+- `llmbrain serve`: Boots the FastAPI server for programmatic access.
 
-### Interactive Coding Agent Loop
-You can also run interactive coding agent loops that leverage persistent repository memory:
+### Specialized Agent Loops
+Execute single-turn commands or launch interactive coding loops against the repository memory:
+- `llmbrain run "<task>"`: Executes a task with automatic routing to the most suitable specialized agent.
+- `llmbrain ask "<question>"`: Q&A about the repository architecture, symbols, and decisions (runs `ask` agent in `read-only` mode).
+- `llmbrain plan "<task>"`: Generates a detailed step-by-step implementation plan for a coding task.
+- `llmbrain build "<task>"`: Automatically implements, tests, and verifies a coding task (runs `build` agent in `ask-before-write` mode).
+- `llmbrain review`: Performs code correctness and security reviews on uncommitted changes.
+- `llmbrain debug "<problem>"`: Reproduces and diagnoses bugs.
+- `llmbrain test "<task>"`: Inspects coverage, writes new tests, or runs test suites.
+- `llmbrain security "<scope>"`: Performs a secure code review over the specified scope.
 
-- `llmbrain ask "<question>"`: Q&A about the repository architecture, symbols, and decisions.
-- `llmbrain plan "<task>"`: Generate a detailed step-by-step implementation plan for a coding task.
-- `llmbrain build "<task>"`: Automatically implement, test, and verify a coding task.
-- `llmbrain review`: Perform code and security reviews on uncommitted changes.
-- `llmbrain config`: Print active application configuration.
+### Multi-Repository Registry Management (`llmbrain repo`)
+Manage multiple local codebases inside a centralized registry:
+- `llmbrain repo add PATH`: Register a local codebase root directory into the registry.
+- `llmbrain repo remove PROJECT_ID`: Remove a codebase registry entry.
+- `llmbrain repo list`: List all registered project paths, IDs, and tags.
+- `llmbrain repo tag PROJECT_ID TAG`: Add a classification tag to a registered repository.
 
-### Session Management
-Manage multiple saved agent sessions for any project:
-- `llmbrain sessions list`: List all sessions.
+### Live Observability (`llmbrain observe`)
+Inspect background services, resource allocations, and job processing:
+- `llmbrain observe queue-stats`: Display indexing job queue statistics.
+- `llmbrain observe profiler-report`: Print operation profiler execution times and memory deltas.
+- `llmbrain observe resource-status`: Print real-time system CPU & memory resource metrics.
+- `llmbrain observe services`: Print health check states of remote LLM providers and server endpoints.
+
+### Agent Session Management (`llmbrain sessions`)
+Manage saved agent conversation sessions and TUI states:
+- `llmbrain sessions list`: List all active and archived sessions.
 - `llmbrain sessions new`: Create a new session.
-- `llmbrain sessions resume <session-id>`: Resume a session and start the TUI.
-- `llmbrain sessions rename <session-id> <new-title>`: Rename a session.
-- `llmbrain sessions archive <session-id>`: Mark session status as archived.
-- `llmbrain sessions delete <session-id>`: Delete a session.
-- `llmbrain sessions export <session-id>`: Export conversation transcript in markdown.
+- `llmbrain sessions resume SESSION_ID`: Resume a session and start the TUI.
+- `llmbrain sessions rename SESSION_ID NEW_TITLE`: Rename a session.
+- `llmbrain sessions archive SESSION_ID`: Mark session status as archived.
+- `llmbrain sessions delete SESSION_ID`: Delete a session.
+- `llmbrain sessions export SESSION_ID`: Export conversation transcript in markdown.
 
-### Repository Memory & Database Management
+### Specialized Agents Metadata (`llmbrain agents`)
+Manage and validate specialized agent configurations:
+- `llmbrain agents list`: List all available specialized agents.
+- `llmbrain agents show AGENT_NAME`: Show detailed configuration (context budget, tools, safety mode) for an agent.
+- `llmbrain agents validate`: Validate configuration schemas and permissions for all agents.
+
+### Repository Memory & Database Management (`llmbrain db` / `llmbrain memory`)
 - `llmbrain memory inspect`: Review task history, architectural decisions made by the agent, command log, and failures.
 - `llmbrain memory refresh`: Force rebuild of the repository memory database.
 - `llmbrain db backup --output backup.zip`: Create a zip backup of project database files.
 - `llmbrain db restore backup.zip`: Restore project databases from a zip backup.
 
-### Cache Management
+### Cache Management (`llmbrain cache`)
 - `llmbrain cache stats`: Display hit/miss metrics and memory cache size.
 - `llmbrain cache clear`: Clear global cache.
 - `llmbrain cache clear --project`: Clear cache only for the current project.
 
 Run `llmbrain --help` for a full list of commands and options.
+
 
 ## Incremental Builds
 
