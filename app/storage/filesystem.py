@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from app.core.config import settings
@@ -37,7 +37,7 @@ def write_manifest(project_root: str | Path, manifest: dict) -> Path:
     root = output_root(project_root)
     root.mkdir(parents=True, exist_ok=True)
     path = root / "manifest.json"
-    manifest.setdefault("generated_at", datetime.now(timezone.utc).isoformat())
+    manifest.setdefault("generated_at", datetime.now(UTC).isoformat())
     manifest.setdefault("version", settings.app_version)
     path.write_text(json.dumps(manifest, indent=2, default=str), encoding="utf-8")
     return path

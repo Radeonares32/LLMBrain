@@ -114,9 +114,7 @@ def generate_wiki_pages(
             seen_slugs.add(slug)
 
             ent_facts = facts_by_subject.get(ent.path, [])
-            sources = [
-                WikiSource(path=ent.path, start_line=0, end_line=0)
-            ] if ent.path else []
+            sources = [WikiSource(path=ent.path, start_line=0, end_line=0)] if ent.path else []
 
             page = WikiPage(
                 id=uuid4().hex,

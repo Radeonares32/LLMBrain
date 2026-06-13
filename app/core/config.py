@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -31,10 +29,20 @@ class Settings(BaseSettings):
 
     # ── supported extensions ────────────────────────────────────────────
     supported_extensions: list[str] = [
-        ".md", ".mdx", ".txt",
-        ".py", ".js", ".ts", ".tsx",
-        ".go", ".rs", ".java",
-        ".yaml", ".yml", ".json", ".toml",
+        ".md",
+        ".mdx",
+        ".txt",
+        ".py",
+        ".js",
+        ".ts",
+        ".tsx",
+        ".go",
+        ".rs",
+        ".java",
+        ".yaml",
+        ".yml",
+        ".json",
+        ".toml",
     ]
 
     # filenames accepted regardless of extension
@@ -47,10 +55,19 @@ class Settings(BaseSettings):
 
     # directories to always skip
     skip_dirs: list[str] = [
-        "node_modules", ".git", "dist", "build",
-        ".venv", "venv", "__pycache__", ".llmbrain",
-        ".tox", ".mypy_cache", ".pytest_cache",
-        "vendor", "target",
+        "node_modules",
+        ".git",
+        "dist",
+        "build",
+        ".venv",
+        "venv",
+        "__pycache__",
+        ".llmbrain",
+        ".tox",
+        ".mypy_cache",
+        ".pytest_cache",
+        "vendor",
+        "target",
     ]
 
 

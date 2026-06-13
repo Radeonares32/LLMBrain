@@ -12,10 +12,12 @@ LLM Brain is a source-grounded engineering memory compiler for repositories, doc
 - **Providers Integration:** Support for OpenAI, Anthropic, Gemini, and Local LLMs (Ollama).
 - **Format Support:** Complex outputs including Brainframe, Mermaid diagrams, and JSON schemas.
 - **CI/CD Pipeline:** Deep integration into GitHub Actions for continuous memory updates.
+- **Terminal Coding Agent (Completed):** Implement provider-independent task execution loops, secure built-in tools (read, write, shell, tests, patches), specialized role agents (ask, plan, build, review), and database task memory persistence.
 
 ## Q3: Security, Scale, and Context
 - **Security Hardening:** Advanced data sanitization to ensure sensitive IP is scrubbed before LLM processing.
 - **Multi-repo Graph:** Cross-repository intelligence and distributed context.
 - **Agentic APIs:** Provide an API for external autonomous agents to consume the LLM Brain graph.
+- **Interactive TUI Interface:** Rich terminal UI for coding agent interactions.
 
 *Note: This roadmap is subject to change based on community feedback and project evolution.*

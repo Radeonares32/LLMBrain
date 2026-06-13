@@ -108,6 +108,29 @@ Run CI checks on a project to detect drift and hallucinated evidence:
 llmbrain ci examples/sample-project --fail-on high
 ```
 
+## Interactive Terminal User Interface (TUI)
+
+You can launch a fully interactive terminal user interface directly inside any repository by running:
+
+```bash
+llmbrain
+```
+
+Or target a specific project directory:
+
+```bash
+llmbrain /path/to/project
+```
+
+The TUI provides a responsive multi-pane dashboard where you can:
+- Ask architecture questions or run coding tasks in chat pane.
+- Interactively approve or deny sensitive operations (`[A] Approve once`, `[S] Approve session`, `[D] Deny`).
+- Inspect workspace Git diffs and run unit tests.
+- View and switch between multiple durable sessions using keyboard shortcuts (Ctrl+X leader commands).
+- Monitor async indexing queue status and CPU/memory resource utilization in the live **Observe Panel** (focus via `Ctrl+X O`).
+
+---
+
 ## CLI Usage
 
 LLM Brain is a CLI-first tool. Some of the core commands include:
@@ -119,6 +142,44 @@ LLM Brain is a CLI-first tool. Some of the core commands include:
 - `llmbrain health PATH`: Generates an evidence health score for the repository.
 - `llmbrain token-report PATH`: Compares JSON-style context with BrainFrame context.
 - `llmbrain serve`: Boots the FastAPI server for programmatic access.
+- `llmbrain doctor`: Runs diagnostic health checks on databases and the environment.
+- `llmbrain logs`: Prints application logs location.
+- `llmbrain search "<query>"`: Performs semantic search over the compiled project memory (chunks, facts, entities) using local embeddings.
+- `llmbrain repo <subcommand>`: Manages multi-repository registrations.
+  - `add PATH`: Register a local codebase root into the registry.
+  - `remove PROJECT_ID`: Remove a codebase from the registry.
+  - `list`: List all registered project paths, IDs, and tags.
+  - `tag PROJECT_ID TAG`: Add a classification tag to a registered repository.
+
+### Interactive Coding Agent Loop
+You can also run interactive coding agent loops that leverage persistent repository memory:
+
+- `llmbrain ask "<question>"`: Q&A about the repository architecture, symbols, and decisions.
+- `llmbrain plan "<task>"`: Generate a detailed step-by-step implementation plan for a coding task.
+- `llmbrain build "<task>"`: Automatically implement, test, and verify a coding task.
+- `llmbrain review`: Perform code and security reviews on uncommitted changes.
+- `llmbrain config`: Print active application configuration.
+
+### Session Management
+Manage multiple saved agent sessions for any project:
+- `llmbrain sessions list`: List all sessions.
+- `llmbrain sessions new`: Create a new session.
+- `llmbrain sessions resume <session-id>`: Resume a session and start the TUI.
+- `llmbrain sessions rename <session-id> <new-title>`: Rename a session.
+- `llmbrain sessions archive <session-id>`: Mark session status as archived.
+- `llmbrain sessions delete <session-id>`: Delete a session.
+- `llmbrain sessions export <session-id>`: Export conversation transcript in markdown.
+
+### Repository Memory & Database Management
+- `llmbrain memory inspect`: Review task history, architectural decisions made by the agent, command log, and failures.
+- `llmbrain memory refresh`: Force rebuild of the repository memory database.
+- `llmbrain db backup --output backup.zip`: Create a zip backup of project database files.
+- `llmbrain db restore backup.zip`: Restore project databases from a zip backup.
+
+### Cache Management
+- `llmbrain cache stats`: Display hit/miss metrics and memory cache size.
+- `llmbrain cache clear`: Clear global cache.
+- `llmbrain cache clear --project`: Clear cache only for the current project.
 
 Run `llmbrain --help` for a full list of commands and options.
 
@@ -190,6 +251,14 @@ LLM Brain can also be used programmatically or run as an API server:
 ```bash
 llmbrain serve --host 0.0.0.0 --port 8000
 ```
+
+Once running, the server exposes the following observability and search endpoints:
+- **`GET /observe/queue`**: Retrieve current indexing job queue statistics for a project path.
+- **`GET /observe/queue/{project_id}/jobs`**: Fetch pending/running/completed job details.
+- **`GET /observe/resource`**: Get CPU, memory metrics, and worker concurrency recommendations.
+- **`GET /observe/health`**: Automated health monitor for remote dependencies/LLM endpoints.
+- **`GET /observe/profiler`**: Profile report listing duration and virtual memory deltas of operations.
+- **`GET /observe/semantic-search`**: Query text and return semantic matching facts, chunks, and entities.
 
 Or via the Python API:
 

@@ -179,6 +179,101 @@ Output:
 
 Purpose: token efficiency measurement.
 
+### queue_indexing_jobs
+
+Input:
+
+- `project_id`
+- `job_type`
+- `payload`
+- `priority`
+
+Output:
+
+- `IndexJob`
+
+Purpose: SQLite-backed thread-safe async indexing queue.
+
+### monitor_resources
+
+Input: None
+
+Output:
+
+- `ResourceSnapshot`
+- `ResourceState`
+- `recommended_workers`
+
+Purpose: CPU & Memory monitoring for adaptive concurrency.
+
+### profile_operations
+
+Input: None (context manager or global recorder)
+
+Output:
+
+- `ProfileReport`
+
+Purpose: Performance and memory delta measurement.
+
+### semantic_search
+
+Input:
+
+- `query`
+- `source_types`
+- `k`
+- `threshold`
+
+Output:
+
+- `SearchResult` list
+
+Purpose: Vector-based semantic search with unit-normalized TF-IDF fallback vector space.
+
+### multi_repo_registry
+
+Input:
+
+- `root_path`
+- `name`
+- `tags`
+
+Output:
+
+- `RepoEntry`
+
+Purpose: Registry management for multi-repository codebases.
+
+## Agent Loop & Coding Skills
+
+### execute_task (Agent Runtime)
+
+Input:
+- `user_request` (task query)
+- `max_iterations` (loop limit)
+- `safety_mode` (read-only, ask-before-write, etc.)
+
+Output:
+- execution log (JSON trajectory)
+- SQLite updated task run record
+
+Purpose: Orchestrates the task interpretation, tool execution, feedback, and memory persistence cycle.
+
+### Built-in Agent Tools
+
+Each tool defines:
+- **`read_file`**: Reads target file content with optional line number slicing.
+- **`list_files`**: Lists all project source files (excluding skipped).
+- **`glob`**: Matches relative paths using glob patterns.
+- **`grep`**: Performs regex query search within project files.
+- **`write_file`**: Writes target content to a file.
+- **`apply_patch`**: Safely applies unified diff changes to a file.
+- **`shell`**: Executes subprocess commands with timeout and output bounds.
+- **`git_status` / `git_diff` / `git_log`**: Accesses repository history and current status.
+- **`diagnostics`**: Summarizes project configuration and index status.
+- **`run_tests`**: Runs test suites, auto-detecting runners (Nix, Pytest, Poetry).
+
 ## LLM Skills
 
 ### structured_fact_extraction
@@ -228,7 +323,6 @@ Checklist:
 - `docs_drift_detection`
 - `pr_comment_generation`
 - `github_app_webhook`
-- `semantic_search`
 - `fts5_search`
 - `architecture_diagram_generation`
 - `dependency_risk_analysis`

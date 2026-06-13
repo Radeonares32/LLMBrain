@@ -90,13 +90,17 @@ class ProjectService:
 
     @staticmethod
     def _project_id_from_path(path: Path) -> str:
-        """Deterministic project id so re-scanning the same path reuses state."""
-        import hashlib
+        """Deterministic project id using load_or_create_project_identity."""
+        from llmbrain.core.identity import load_or_create_project_identity
 
-        return hashlib.sha256(str(path).encode()).hexdigest()[:16]
+        identity = load_or_create_project_identity(path)
+        return identity["project_id"]
 
     def _store(self, project_root: Path) -> SQLiteStore:
-        db_path = output_root(project_root) / settings.db_filename
+        from llmbrain.core.identity import get_project_storage_dir, load_or_create_project_identity
+
+        identity = load_or_create_project_identity(project_root)
+        db_path = get_project_storage_dir(identity["project_id"]) / "brain.db"
         return SQLiteStore(db_path)
 
     def _reuse_incremental_memory(
@@ -420,26 +424,15 @@ class ProjectService:
 
     def _find_project(self, project_id: str) -> Project | None:
         """Search for a project across known databases."""
-        # In MVP, we check a simple in-memory or tmp index.
-        # For now, iterate brain.db files under common locations.
-        import glob
-        import os
+        from llmbrain.core.identity import get_project_storage_dir
 
-        search_roots = [
-            os.path.expanduser("~"),
-            "/tmp",
-        ]
-
-        for sr in search_roots:
-            pattern = os.path.join(sr, "**", ".llmbrain", "brain.db")
-            for db_path in glob.iglob(pattern, recursive=True):
-                try:
-                    store = SQLiteStore(db_path)
-                    project = store.get_project(project_id)
-                    if project:
-                        return project
-                except Exception:
-                    continue
+        db_path = get_project_storage_dir(project_id) / "brain.db"
+        if db_path.exists():
+            try:
+                store = SQLiteStore(db_path)
+                return store.get_project(project_id)
+            except Exception:
+                pass
         return None
 
     def _store_for_project(self, project_id: str) -> SQLiteStore | None:

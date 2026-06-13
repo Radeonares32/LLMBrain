@@ -126,6 +126,30 @@ Responsibilities:
 - Build and `twine check`.
 - Release notes.
 
+## Built-in Coding Agent Personas
+
+The runtime supports running specialized coding agent loops, each with a distinct system prompt, model settings, and security permissions.
+
+### 1. ask (Repository Q&A)
+- **Role**: Answers questions about symbols, design, and architecture using the repository memory.
+- **Permissions**: Read-only (`SafetyMode.READ_ONLY`).
+- **Use Case**: Safe exploration and code intelligence query sessions.
+
+### 2. plan (Analysis and Planning)
+- **Role**: Analyzes coding tasks, identifies affected files, lists dependency impact, and outlines test strategies.
+- **Permissions**: Read-only (`SafetyMode.READ_ONLY`).
+- **Use Case**: Creating architectural blueprints before making modifications.
+
+### 3. build (Implementation and Testing)
+- **Role**: Implements code modifications, writes files, applies patches, and executes test suites to solve coding tasks.
+- **Permissions**: Ask-before-write or Trusted project (`SafetyMode.ASK_BEFORE_WRITE` / `SafetyMode.TRUSTED_PROJECT`).
+- **Use Case**: Active coding work, bug fixing, and package building.
+
+### 4. review (Code and Diff Review)
+- **Role**: Reviews current git diff changes, verifying correctness, style, and security against common risks.
+- **Permissions**: Read-only (`SafetyMode.READ_ONLY`).
+- **Use Case**: Code review stage before commit or pull request integration.
+
 ## Agent Collaboration Rules
 
 - Agents must not bypass evidence verification.

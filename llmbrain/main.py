@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from llmbrain.api.routes.health import router as health_router
+from llmbrain.api.routes.observe import router as observe_router
 from llmbrain.api.routes.projects import router as projects_router
 from llmbrain.core.config import settings
 
@@ -34,6 +35,7 @@ def create_app() -> FastAPI:
     # ── routers ─────────────────────────────────────────────────────────
     application.include_router(health_router)
     application.include_router(projects_router)
+    application.include_router(observe_router)
 
     return application
 

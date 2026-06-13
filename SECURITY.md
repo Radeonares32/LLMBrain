@@ -22,3 +22,21 @@ Please provide the following information in your report:
 - Any suggested mitigations.
 
 We will keep you informed of our progress and will publicly disclose the vulnerability once a fix has been released.
+
+## Agent Security & Permission Policies
+
+With the extension of LLMBrain to a coding agent, the following security constraints are enforced at the runtime level:
+
+### 1. Safety Permission Modes
+Users can select from four runtime safety modes to control tool execution risk:
+- **`read-only`**: Only read-only tools are allowed. File writes, shell commands, and git modifications are completely blocked.
+- **`ask-before-write`**: (Default) Allows read operations. Prompts the user in the terminal for approval before executing file writes, patches, shell commands, or destructive git tasks.
+- **`trusted-project`**: Automatically permits file reads/writes. Prompts the user before executing shell commands or destructive operations.
+- **`deny-shell`**: Blocks shell commands entirely. Prompts the user for write operations.
+
+### 2. Path Traversal Prevention
+All file tools (`read_file`, `write_file`, `apply_patch`) validate target paths. Access to files outside the workspace root is rejected with a `PermissionError` to prevent unauthorized file access.
+
+### 3. Destructive Operation Blocklist
+Commands containing dangerous operations (e.g. `rm -rf /`, force push options `push -f`, resetting commits `reset --hard`) are flagged and blocklisted, requiring explicit confirmation or blocked depending on the current safety settings.
+

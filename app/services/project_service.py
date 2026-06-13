@@ -3,19 +3,11 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from uuid import uuid4
 
 from app.core.config import settings
-from app.models.chunk import Chunk
-from app.models.document import Document
-from app.models.entity import Entity
-from app.models.fact import Fact
-from app.models.graph import KnowledgeGraph
 from app.models.project import BuildResult, Project, ProjectCreate, ProjectStats, ScanResult
-from app.models.relation import Relation
-from app.models.wiki import WikiPage
 from app.services.chunker import chunk_documents
 from app.services.context_builder import build_compact_context
 from app.services.entity_extractor import extract_entities
@@ -30,7 +22,7 @@ from app.storage.sqlite import SQLiteStore
 
 
 def _now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class ProjectService:
@@ -50,6 +42,7 @@ class ProjectService:
     def _project_id_from_path(path: Path) -> str:
         """Deterministic project id so re-scanning the same path reuses state."""
         import hashlib
+
         return hashlib.sha256(str(path).encode()).hexdigest()[:16]
 
     def _store(self, project_root: Path) -> SQLiteStore:
@@ -173,12 +166,15 @@ class ProjectService:
             relations=len(relations),
             wiki_pages=len(wiki_pages),
         )
-        write_manifest(root, {
-            "project_id": project_id,
-            "project_name": name,
-            "root_path": str(root),
-            "stats": stats.model_dump(),
-        })
+        write_manifest(
+            root,
+            {
+                "project_id": project_id,
+                "project_name": name,
+                "root_path": str(root),
+                "stats": stats.model_dump(),
+            },
+        )
 
         return BuildResult(
             project=project,
@@ -334,9 +330,16 @@ class ProjectService:
                     "type": {
                         "type": "string",
                         "enum": [
-                            "service", "module", "api_endpoint", "database",
-                            "queue", "config", "env_var", "dependency",
-                            "file", "package",
+                            "service",
+                            "module",
+                            "api_endpoint",
+                            "database",
+                            "queue",
+                            "config",
+                            "env_var",
+                            "dependency",
+                            "file",
+                            "package",
                         ],
                     },
                     "path": {"type": "string"},
@@ -353,8 +356,14 @@ class ProjectService:
                     "relation": {
                         "type": "string",
                         "enum": [
-                            "depends_on", "calls", "exposes", "reads_from",
-                            "writes_to", "configured_by", "documented_by", "related_to",
+                            "depends_on",
+                            "calls",
+                            "exposes",
+                            "reads_from",
+                            "writes_to",
+                            "configured_by",
+                            "documented_by",
+                            "related_to",
                         ],
                     },
                     "target": {"type": "string"},
