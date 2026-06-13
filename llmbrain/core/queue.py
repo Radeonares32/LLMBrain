@@ -327,9 +327,7 @@ class IndexQueue:
     def get_job(self, job_id: str) -> IndexJob | None:
         """Return a single job by ID, or *None* if not found."""
         with self._lock:
-            row = self._conn.execute(
-                "SELECT * FROM index_jobs WHERE id = ?", (job_id,)
-            ).fetchone()
+            row = self._conn.execute("SELECT * FROM index_jobs WHERE id = ?", (job_id,)).fetchone()
         return _row_to_job(row) if row else None
 
     def get_jobs(

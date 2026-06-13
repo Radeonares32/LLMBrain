@@ -271,9 +271,7 @@ class TestResourceManager:
         assert rm.recommended_workers() == 8
 
     def test_recommended_workers_critical(self):
-        rm = ResourceManager(
-            ResourcePolicy(min_workers=1, max_workers=8, cpu_threshold_high=0.0)
-        )
+        rm = ResourceManager(ResourcePolicy(min_workers=1, max_workers=8, cpu_threshold_high=0.0))
         rm.sample()
         assert rm.recommended_workers() == 1
 

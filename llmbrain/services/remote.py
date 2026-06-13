@@ -50,9 +50,7 @@ class ApiVersion(BaseModel):
         """
         parts = s.strip().lstrip("v").split(".")
         if len(parts) != 3:
-            raise ValueError(
-                f"Invalid version string {s!r}: expected 'MAJOR.MINOR.PATCH'."
-            )
+            raise ValueError(f"Invalid version string {s!r}: expected 'MAJOR.MINOR.PATCH'.")
         try:
             return cls(major=int(parts[0]), minor=int(parts[1]), patch=int(parts[2]))
         except ValueError as exc:

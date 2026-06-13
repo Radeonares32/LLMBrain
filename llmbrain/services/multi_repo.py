@@ -76,8 +76,7 @@ class MultiRepoRegistry:
         for entry in entries:
             if entry.root_path == resolved:
                 raise ValueError(
-                    f"Repository already registered: {resolved} "
-                    f"(project_id={entry.project_id})"
+                    f"Repository already registered: {resolved} (project_id={entry.project_id})"
                 )
 
         identity = load_or_create_project_identity(Path(resolved))

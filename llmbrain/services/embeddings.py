@@ -14,12 +14,57 @@ EmbeddingVector = list[float]
 # Stopwords to filter out
 _STOPWORDS = frozenset(
     {
-        "the", "is", "in", "it", "of", "and", "or", "to", "a", "an",
-        "for", "on", "with", "as", "at", "be", "this", "that", "are",
-        "was", "were", "by", "from", "not", "but", "if", "so", "do",
-        "we", "he", "she", "they", "you", "i", "my", "its", "our",
-        "has", "have", "had", "will", "would", "can", "could", "may",
-        "should", "all", "no", "than", "when", "then",
+        "the",
+        "is",
+        "in",
+        "it",
+        "of",
+        "and",
+        "or",
+        "to",
+        "a",
+        "an",
+        "for",
+        "on",
+        "with",
+        "as",
+        "at",
+        "be",
+        "this",
+        "that",
+        "are",
+        "was",
+        "were",
+        "by",
+        "from",
+        "not",
+        "but",
+        "if",
+        "so",
+        "do",
+        "we",
+        "he",
+        "she",
+        "they",
+        "you",
+        "i",
+        "my",
+        "its",
+        "our",
+        "has",
+        "have",
+        "had",
+        "will",
+        "would",
+        "can",
+        "could",
+        "may",
+        "should",
+        "all",
+        "no",
+        "than",
+        "when",
+        "then",
     }
 )
 
@@ -37,7 +82,7 @@ class TfIdfEmbedder:
 
     def __init__(self, config: EmbeddingConfig | None = None) -> None:
         self.config = config or EmbeddingConfig()
-        self._vocab: list[str] = []          # ordered term list (size <= max_terms)
+        self._vocab: list[str] = []  # ordered term list (size <= max_terms)
         self._vocab_index: dict[str, int] = {}
         self._idf: dict[str, float] = {}
         self._fitted = False
@@ -71,10 +116,7 @@ class TfIdfEmbedder:
 
         self._vocab = vocab
         self._vocab_index = {term: i for i, term in enumerate(vocab)}
-        self._idf = {
-            term: math.log((n_docs + 1) / (doc_freq[term] + 1)) + 1.0
-            for term in vocab
-        }
+        self._idf = {term: math.log((n_docs + 1) / (doc_freq[term] + 1)) + 1.0 for term in vocab}
         self._fitted = True
 
     # ── embed ─────────────────────────────────────────────────────────
@@ -126,10 +168,7 @@ class TfIdfEmbedder:
         k: int = 10,
     ) -> list[tuple[str, float]]:
         """Return top-k (id, score) pairs sorted by cosine similarity descending."""
-        scored = [
-            (item_id, self.cosine_similarity(query_vec, vec))
-            for item_id, vec in corpus
-        ]
+        scored = [(item_id, self.cosine_similarity(query_vec, vec)) for item_id, vec in corpus]
         scored.sort(key=lambda x: x[1], reverse=True)
         return scored[:k]
 

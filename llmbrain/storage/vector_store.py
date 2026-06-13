@@ -156,9 +156,7 @@ class VectorStore:
             row = cur.fetchone()
         return _row_to_record(row) if row else None
 
-    def get_all(
-        self, project_id: str, source_type: str | None = None
-    ) -> list[VectorRecord]:
+    def get_all(self, project_id: str, source_type: str | None = None) -> list[VectorRecord]:
         with self._lock:
             if source_type:
                 cur = self._conn.execute(
@@ -177,9 +175,7 @@ class VectorStore:
 
     def delete_project(self, project_id: str) -> int:
         with self._lock:
-            cur = self._conn.execute(
-                "DELETE FROM embeddings WHERE project_id = ?", (project_id,)
-            )
+            cur = self._conn.execute("DELETE FROM embeddings WHERE project_id = ?", (project_id,))
             self._conn.commit()
         return cur.rowcount
 

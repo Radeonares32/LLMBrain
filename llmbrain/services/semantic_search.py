@@ -55,9 +55,7 @@ class SemanticSearchService:
                 continue
             vec = self.embedder.embed(text)
             preview = text[:200].replace("\n", " ")
-            self.vector_store.upsert(
-                self.project_id, "chunk", chunk["id"], preview, vec
-            )
+            self.vector_store.upsert(self.project_id, "chunk", chunk["id"], preview, vec)
             count += 1
         return count
 
@@ -77,9 +75,7 @@ class SemanticSearchService:
             if not text.strip():
                 continue
             vec = self.embedder.embed(text)
-            self.vector_store.upsert(
-                self.project_id, "fact", fact["id"], text[:200], vec
-            )
+            self.vector_store.upsert(self.project_id, "fact", fact["id"], text[:200], vec)
             count += 1
         return count
 
@@ -87,10 +83,7 @@ class SemanticSearchService:
         """Embed and store extracted entities."""
         if not entities:
             return 0
-        texts = [
-            f"{e.get('name', '')} {e.get('kind', '')} {e.get('path', '')}"
-            for e in entities
-        ]
+        texts = [f"{e.get('name', '')} {e.get('kind', '')} {e.get('path', '')}" for e in entities]
         if not self.embedder.is_fitted:
             self.embedder.fit(texts)
         count = 0
@@ -98,9 +91,7 @@ class SemanticSearchService:
             if not text.strip():
                 continue
             vec = self.embedder.embed(text)
-            self.vector_store.upsert(
-                self.project_id, "entity", entity["id"], text[:200], vec
-            )
+            self.vector_store.upsert(self.project_id, "entity", entity["id"], text[:200], vec)
             count += 1
         return count
 
@@ -119,8 +110,7 @@ class SemanticSearchService:
             for f in facts
         )
         all_texts.extend(
-            f"{e.get('name', '')} {e.get('kind', '')} {e.get('path', '')}"
-            for e in entities
+            f"{e.get('name', '')} {e.get('kind', '')} {e.get('path', '')}" for e in entities
         )
         corpus = [t for t in all_texts if t.strip()]
         if corpus:

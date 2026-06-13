@@ -76,7 +76,7 @@ class TuiState:
         self.test_content = ""
 
         # Phase 6 — Observability
-        self.queue_stats: dict = {}       # {status: count}
+        self.queue_stats: dict = {}  # {status: count}
         self.resource_cpu: float = 0.0
         self.resource_mem: float = 0.0
         self.resource_state: str = "unknown"

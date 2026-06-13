@@ -135,11 +135,13 @@ class TestTfIdfEmbedder:
         assert isinstance(default_embedder, TfIdfEmbedder)
 
     def test_similar_texts_score_higher(self):
-        emb = _make_embedder([
-            "async python programming asyncio coroutine",
-            "database sql query sqlite",
-            "machine learning neural network",
-        ])
+        emb = _make_embedder(
+            [
+                "async python programming asyncio coroutine",
+                "database sql query sqlite",
+                "machine learning neural network",
+            ]
+        )
         q = emb.embed("async coroutine python")
         s1 = TfIdfEmbedder.cosine_similarity(
             q, emb.embed("async python programming asyncio coroutine")
@@ -173,8 +175,13 @@ class TestVectorStore:
     def test_upsert_batch(self, tmp_path):
         vs = _tmp_vs(tmp_path)
         records = [
-            {"project_id": "proj-1", "source_type": "fact", "source_id": f"f{i}",
-             "text_preview": f"fact {i}", "vector": [float(i)]}
+            {
+                "project_id": "proj-1",
+                "source_type": "fact",
+                "source_id": f"f{i}",
+                "text_preview": f"fact {i}",
+                "vector": [float(i)],
+            }
             for i in range(5)
         ]
         count = vs.upsert_batch(records)
@@ -298,8 +305,13 @@ class TestSemanticSearchService:
     def test_index_chunks_returns_count(self, tmp_path):
         svc = self._make_service(tmp_path)
         chunks = [
-            {"id": f"c{i}", "content": f"Python async programming chunk {i}", "path": "foo.py",
-             "start_line": i, "end_line": i + 5}
+            {
+                "id": f"c{i}",
+                "content": f"Python async programming chunk {i}",
+                "path": "foo.py",
+                "start_line": i,
+                "end_line": i + 5,
+            }
             for i in range(5)
         ]
         count = svc.index_chunks(chunks)
@@ -312,8 +324,13 @@ class TestSemanticSearchService:
     def test_index_facts(self, tmp_path):
         svc = self._make_service(tmp_path)
         facts = [
-            {"id": f"f{i}", "subject": "Python", "predicate": "is", "object": "language",
-             "claim": f"Python fact {i}"}
+            {
+                "id": f"f{i}",
+                "subject": "Python",
+                "predicate": "is",
+                "object": "language",
+                "claim": f"Python fact {i}",
+            }
             for i in range(3)
         ]
         count = svc.index_facts(facts)
@@ -331,10 +348,20 @@ class TestSemanticSearchService:
     def test_search_returns_results(self, tmp_path):
         svc = self._make_service(tmp_path)
         chunks = [
-            {"id": "c1", "content": "async python coroutine asyncio", "path": "a.py",
-             "start_line": 1, "end_line": 10},
-            {"id": "c2", "content": "database sqlite sql query", "path": "b.py",
-             "start_line": 1, "end_line": 10},
+            {
+                "id": "c1",
+                "content": "async python coroutine asyncio",
+                "path": "a.py",
+                "start_line": 1,
+                "end_line": 10,
+            },
+            {
+                "id": "c2",
+                "content": "database sqlite sql query",
+                "path": "b.py",
+                "start_line": 1,
+                "end_line": 10,
+            },
         ]
         svc.index_chunks(chunks)
         results = svc.search("python async", source_types=["chunk"], k=5, threshold=0.0)
@@ -356,10 +383,28 @@ class TestSemanticSearchService:
 
     def test_search_merges_types(self, tmp_path):
         svc = self._make_service(tmp_path)
-        svc.index_chunks([{"id": "c1", "content": "python programming", "path": "x.py",
-                           "start_line": 1, "end_line": 5}])
-        svc.index_facts([{"id": "f1", "subject": "python", "predicate": "is",
-                          "object": "language", "claim": "python programming language"}])
+        svc.index_chunks(
+            [
+                {
+                    "id": "c1",
+                    "content": "python programming",
+                    "path": "x.py",
+                    "start_line": 1,
+                    "end_line": 5,
+                }
+            ]
+        )
+        svc.index_facts(
+            [
+                {
+                    "id": "f1",
+                    "subject": "python",
+                    "predicate": "is",
+                    "object": "language",
+                    "claim": "python programming language",
+                }
+            ]
+        )
         results = svc.search("python", source_types=["chunk", "fact"], k=10, threshold=0.0)
         types_found = {r.source_type for r in results}
         assert len(types_found) >= 1  # At least one type found
@@ -397,8 +442,10 @@ class TestMultiRepoRegistry:
         fake_project_path.mkdir()
 
         fake_identity = {"project_id": "proj-abc123"}
-        with patch("llmbrain.services.multi_repo.load_or_create_project_identity",
-                   return_value=fake_identity):
+        with patch(
+            "llmbrain.services.multi_repo.load_or_create_project_identity",
+            return_value=fake_identity,
+        ):
             entry = reg.add(str(fake_project_path), name="MyProject", tags=["python"])
 
         assert entry.project_id == "proj-abc123"
@@ -413,8 +460,10 @@ class TestMultiRepoRegistry:
         fake_path.mkdir()
         fake_identity = {"project_id": "proj-dup"}
 
-        with patch("llmbrain.services.multi_repo.load_or_create_project_identity",
-                   return_value=fake_identity):
+        with patch(
+            "llmbrain.services.multi_repo.load_or_create_project_identity",
+            return_value=fake_identity,
+        ):
             reg.add(str(fake_path))
             with pytest.raises(ValueError, match="already registered"):
                 reg.add(str(fake_path))
@@ -427,8 +476,10 @@ class TestMultiRepoRegistry:
         fake_path.mkdir()
         fake_identity = {"project_id": "proj-remove"}
 
-        with patch("llmbrain.services.multi_repo.load_or_create_project_identity",
-                   return_value=fake_identity):
+        with patch(
+            "llmbrain.services.multi_repo.load_or_create_project_identity",
+            return_value=fake_identity,
+        ):
             reg.add(str(fake_path))
         assert reg.remove("proj-remove") is True
         assert reg.list_repos() == []
@@ -445,8 +496,10 @@ class TestMultiRepoRegistry:
         fake_path.mkdir()
         fake_identity = {"project_id": "proj-get"}
 
-        with patch("llmbrain.services.multi_repo.load_or_create_project_identity",
-                   return_value=fake_identity):
+        with patch(
+            "llmbrain.services.multi_repo.load_or_create_project_identity",
+            return_value=fake_identity,
+        ):
             reg.add(str(fake_path), name="GetRepo")
 
         entry = reg.get("proj-get")
@@ -464,8 +517,10 @@ class TestMultiRepoRegistry:
         for i, tag_set in enumerate([["python", "web"], ["rust"], ["python", "cli"]]):
             p = tmp_path / f"repo{i}"
             p.mkdir()
-            with patch("llmbrain.services.multi_repo.load_or_create_project_identity",
-                       return_value={"project_id": f"proj-{i}"}):
+            with patch(
+                "llmbrain.services.multi_repo.load_or_create_project_identity",
+                return_value={"project_id": f"proj-{i}"},
+            ):
                 reg.add(str(p), tags=tag_set)
 
         python_repos = reg.search_by_tag("python")
@@ -477,8 +532,10 @@ class TestMultiRepoRegistry:
         reg = self._make_registry(tmp_path)
         p = tmp_path / "findme"
         p.mkdir()
-        with patch("llmbrain.services.multi_repo.load_or_create_project_identity",
-                   return_value={"project_id": "proj-find"}):
+        with patch(
+            "llmbrain.services.multi_repo.load_or_create_project_identity",
+            return_value={"project_id": "proj-find"},
+        ):
             reg.add(str(p), name="FindMe")
 
         found = reg.find_by_path(str(p))
@@ -491,8 +548,10 @@ class TestMultiRepoRegistry:
         reg = self._make_registry(tmp_path)
         p = tmp_path / "repolast"
         p.mkdir()
-        with patch("llmbrain.services.multi_repo.load_or_create_project_identity",
-                   return_value={"project_id": "proj-last"}):
+        with patch(
+            "llmbrain.services.multi_repo.load_or_create_project_identity",
+            return_value={"project_id": "proj-last"},
+        ):
             reg.add(str(p))
 
         assert reg.get("proj-last").last_indexed is None
@@ -505,8 +564,10 @@ class TestMultiRepoRegistry:
         reg = self._make_registry(tmp_path)
         p = tmp_path / "tagtest"
         p.mkdir()
-        with patch("llmbrain.services.multi_repo.load_or_create_project_identity",
-                   return_value={"project_id": "proj-tag"}):
+        with patch(
+            "llmbrain.services.multi_repo.load_or_create_project_identity",
+            return_value={"project_id": "proj-tag"},
+        ):
             reg.add(str(p))
 
         assert reg.add_tag("proj-tag", "newlabel") is True
@@ -534,8 +595,10 @@ class TestMultiRepoRegistry:
         p.mkdir()
 
         reg1 = MultiRepoRegistry(registry_path=reg_path)
-        with patch("llmbrain.services.multi_repo.load_or_create_project_identity",
-                   return_value={"project_id": "proj-persist"}):
+        with patch(
+            "llmbrain.services.multi_repo.load_or_create_project_identity",
+            return_value={"project_id": "proj-persist"},
+        ):
             reg1.add(str(p), name="PersistMe")
 
         # New instance reads same file
