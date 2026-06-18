@@ -47,3 +47,34 @@ def test_brainframe_truncates_by_priority():
     assert "@truncated true" in bf
     assert "high123" in bf
     assert "low123" not in bf
+
+
+def test_brainframe_truncates_by_token_limit():
+    facts = []
+    for i in range(20):
+        facts.append({
+            "id": f"low{i}",
+            "subject": "low",
+            "predicate": "documents",
+            "object": "y" * 200,
+            "confidence": "low",
+            "evidence": [],
+        })
+    facts.append(
+        {
+            "id": "hightoken",
+            "subject": "high",
+            "predicate": "defines",
+            "object": "api",
+            "confidence": "high",
+            "evidence": [{"path": "api.py", "start_line": 1, "end_line": 2}],
+        }
+    )
+
+    # 20 facts * 200 chars ~= 4000 chars ~= 1000 tokens.
+    # Total context without truncation would be > 1000 tokens.
+    bf = build_brainframe_context("p", "pid", [], [], facts, max_tokens=200)
+
+    assert "@truncated true" in bf
+    assert "hightoke" in bf
+    assert "low19" not in bf

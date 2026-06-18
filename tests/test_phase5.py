@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from llmbrain.app.tui import LLMBrainTUI
+from llmbrain.tui import LLMBrainTUI
 from llmbrain.core.identity import (
     load_or_create_project_identity,
 )

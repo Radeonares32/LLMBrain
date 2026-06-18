@@ -233,6 +233,55 @@ BRAIN_MIGRATIONS = {
             updated_at    TEXT NOT NULL
         )""",
     ],
+    4: [
+        # Phase 3: FTS5 Virtual Table for Hybrid Search
+        """CREATE VIRTUAL TABLE IF NOT EXISTS fts_search USING fts5(
+            id UNINDEXED,
+            project_id UNINDEXED,
+            source_type UNINDEXED,
+            text_content
+        )""",
+        # Populate existing data into FTS5
+        """INSERT INTO fts_search(id, project_id, source_type, text_content)
+           SELECT id, project_id, 'chunk', content FROM chunks""",
+        """INSERT INTO fts_search(id, project_id, source_type, text_content)
+           SELECT id, project_id, 'fact', subject || ' ' || predicate || ' ' || object || ' ' || claim FROM facts""",
+        """INSERT INTO fts_search(id, project_id, source_type, text_content)
+           SELECT id, project_id, 'entity', name || ' ' || type || ' ' || path FROM entities""",
+        # Triggers for chunks
+        """CREATE TRIGGER IF NOT EXISTS chunks_fts_ai AFTER INSERT ON chunks BEGIN
+            INSERT INTO fts_search(id, project_id, source_type, text_content)
+            VALUES (new.id, new.project_id, 'chunk', new.content);
+        END""",
+        """CREATE TRIGGER IF NOT EXISTS chunks_fts_ad AFTER DELETE ON chunks BEGIN
+            DELETE FROM fts_search WHERE id = old.id AND source_type = 'chunk';
+        END""",
+        """CREATE TRIGGER IF NOT EXISTS chunks_fts_au AFTER UPDATE ON chunks BEGIN
+            UPDATE fts_search SET text_content = new.content WHERE id = new.id AND source_type = 'chunk';
+        END""",
+        # Triggers for facts
+        """CREATE TRIGGER IF NOT EXISTS facts_fts_ai AFTER INSERT ON facts BEGIN
+            INSERT INTO fts_search(id, project_id, source_type, text_content)
+            VALUES (new.id, new.project_id, 'fact', new.subject || ' ' || new.predicate || ' ' || new.object || ' ' || new.claim);
+        END""",
+        """CREATE TRIGGER IF NOT EXISTS facts_fts_ad AFTER DELETE ON facts BEGIN
+            DELETE FROM fts_search WHERE id = old.id AND source_type = 'fact';
+        END""",
+        """CREATE TRIGGER IF NOT EXISTS facts_fts_au AFTER UPDATE ON facts BEGIN
+            UPDATE fts_search SET text_content = new.subject || ' ' || new.predicate || ' ' || new.object || ' ' || new.claim WHERE id = new.id AND source_type = 'fact';
+        END""",
+        # Triggers for entities
+        """CREATE TRIGGER IF NOT EXISTS entities_fts_ai AFTER INSERT ON entities BEGIN
+            INSERT INTO fts_search(id, project_id, source_type, text_content)
+            VALUES (new.id, new.project_id, 'entity', new.name || ' ' || new.type || ' ' || new.path);
+        END""",
+        """CREATE TRIGGER IF NOT EXISTS entities_fts_ad AFTER DELETE ON entities BEGIN
+            DELETE FROM fts_search WHERE id = old.id AND source_type = 'entity';
+        END""",
+        """CREATE TRIGGER IF NOT EXISTS entities_fts_au AFTER UPDATE ON entities BEGIN
+            UPDATE fts_search SET text_content = new.name || ' ' || new.type || ' ' || new.path WHERE id = new.id AND source_type = 'entity';
+        END""",
+    ],
 }
 
 
@@ -548,6 +597,25 @@ class SQLiteStore:
                 page["markdown_content"] = content
                 page["sources"] = _wiki_sources_from_markdown(content)
             return pages
+
+    # ── FTS5 Search ─────────────────────────────────────────────────────
+
+    def search_fts(self, project_id: str, query: str, limit: int = 10) -> list[dict]:
+        """Full-text search using FTS5 virtual table."""
+        with self._cursor() as cur:
+            # FTS5 match query formatting. We replace special chars to avoid parse errors.
+            safe_query = query.replace("'", "''").replace('"', '""')
+            if not safe_query.strip():
+                return []
+                
+            cur.execute(
+                "SELECT id, source_type, text_content, rank as score "
+                "FROM fts_search "
+                "WHERE project_id = ? AND fts_search MATCH ? "
+                "ORDER BY rank LIMIT ?",
+                (project_id, safe_query, limit)
+            )
+            return [dict(row) for row in cur.fetchall()]
 
     # ── cleanup ─────────────────────────────────────────────────────────
 

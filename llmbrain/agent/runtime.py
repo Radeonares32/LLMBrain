@@ -267,10 +267,11 @@ class AgentAction(BaseModel):
 class ModelProvider:
     """Interface that LLM adapters must implement for agent tasks."""
 
-    async def complete(
+    async def generate(
         self,
         request: ModelRequest,
         cancellation_token: CancellationToken | None = None,
+        stream_callback: Callable[[str], None] | None = None,
     ) -> ModelResponse:
         """Execute a text/structured completion request."""
         raise NotImplementedError
@@ -282,10 +283,11 @@ class LLMProviderAdapter(ModelProvider):
     def __init__(self, provider: BaseLLMProvider) -> None:
         self.provider = provider
 
-    async def complete(
+    async def generate(
         self,
         request: ModelRequest,
         cancellation_token: CancellationToken | None = None,
+        stream_callback: Callable[[str], None] | None = None,
     ) -> ModelResponse:
         if cancellation_token:
             cancellation_token.check()
@@ -305,7 +307,7 @@ class LLMProviderAdapter(ModelProvider):
 
         schema = AgentAction.model_json_schema()
 
-        llm_resp = await self.provider.generate_structured(llm_req, schema=schema)
+        llm_resp = await self.provider.generate_structured(llm_req, schema=schema, stream_callback=stream_callback)
 
         return ModelResponse(
             message=llm_resp.raw if llm_resp.is_valid else None,
@@ -630,9 +632,9 @@ class AgentRuntime:
         from llmbrain.llm.base import BaseLLMProvider
 
         if isinstance(provider, BaseLLMProvider):
-            self.provider = LLMProviderAdapter(provider)
+            self.model_provider = LLMProviderAdapter(provider)
         else:
-            self.provider = provider
+            self.model_provider = provider
         self.event_bus = RuntimeEventBus()
         if event_listener:
             self.event_bus.subscribe(event_listener)
@@ -900,13 +902,16 @@ class AgentRuntime:
                 )
 
                 try:
-                    response = await self.provider.complete(
+                    response = await self.model_provider.generate(
                         ModelRequest(
                             messages=messages,
                             system_prompt=system_prompt,
-                            tools=[],
+                            model=None,
                         ),
-                        cancellation_token=cancellation_token,
+                        cancellation_token,
+                        stream_callback=lambda chunk: self.event_bus.emit(
+                            RuntimeEvent(event_type="model_stream_chunk", payload={"chunk": chunk})
+                        )
                     )
                 except Exception as e:
                     raise ProviderFailureError(f"Model call failed: {e}")

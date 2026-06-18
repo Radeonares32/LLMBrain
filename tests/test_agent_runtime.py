@@ -1,6 +1,7 @@
 """Comprehensive unit and integration tests for LLMBrain agent runtime."""
 
 import json
+from typing import Any, AsyncGenerator, Callable
 
 import pytest
 
@@ -29,10 +30,11 @@ class MockRawModelProvider(ModelProvider):
         self.responses = responses
         self.call_count = 0
 
-    async def complete(
+    async def generate(
         self,
         request: ModelRequest,
         cancellation_token: CancellationToken | None = None,
+        stream_callback: Callable[[str], None] | None = None,
     ) -> ModelResponse:
         if cancellation_token:
             cancellation_token.check()
@@ -70,10 +72,14 @@ class MockAdaptedBaseProvider(BaseLLMProvider):
         self.responses = responses
         self.call_count = 0
 
-    async def generate(self, request: LLMRequest) -> LLMResponse:
-        return LLMResponse(raw="dummy")
+    async def generate(self, request: LLMRequest, stream_callback=None) -> LLMResponse:
+        return LLMResponse(raw='{"thought": "Test response", "finish_response": "Test complete."}')
 
-    async def generate_structured(self, request: LLMRequest, schema: dict) -> LLMResponse:
+    async def stream(self, request: LLMRequest) -> AsyncGenerator[str, None]:
+        yield '{"thought": "Test response", '
+        yield '"finish_response": "Test complete."}'
+
+    async def generate_structured(self, request: LLMRequest, schema: dict, stream_callback=None) -> LLMResponse:
         if self.call_count < len(self.responses):
             resp = self.responses[self.call_count]
             self.call_count += 1
@@ -346,7 +352,7 @@ async def test_provider_timeout(temp_project):
     """Test provider failure handling during completions."""
 
     class TimeoutProvider(ModelProvider):
-        async def complete(self, r, c=None):
+        async def generate(self, r, c=None, stream_callback=None):
             raise TimeoutError("Model response timeout.")
 
     runtime = AgentRuntime(
@@ -365,7 +371,7 @@ async def test_malformed_model_response_with_recovery(temp_project):
         def __init__(self) -> None:
             self.call_count = 0
 
-        async def complete(self, request: ModelRequest, cancellation_token=None) -> ModelResponse:
+        async def generate(self, request: ModelRequest, cancellation_token=None, stream_callback=None) -> ModelResponse:
             self.call_count += 1
             if self.call_count == 1:
                 return ModelResponse(

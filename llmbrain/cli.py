@@ -65,7 +65,7 @@ def build(
     path_or_task: str,
     provider: str = typer.Option(
         settings.default_provider,
-        help="LLM provider: openai | deepseek | anthropic | ollama",
+        help="LLM provider: openai | deepseek | anthropic | ollama | gemini",
     ),
     project_name: str = typer.Option(None, "--project-name", help="Project name"),
     incremental: bool = typer.Option(
@@ -204,6 +204,114 @@ def graph(
         console.print(f"[bold green]Saved graph to {output}[/bold green]")
     else:
         console.print(f"Graph nodes: {len(g.get('nodes', []))}, edges: {len(g.get('edges', []))}")
+
+
+@app.command()
+def diagram(
+    path: str = typer.Option(".", "--path", help="Proje dizini"),
+    output: str = typer.Option(None, "--output", help="Output file path (*.mermaid)"),
+):
+    """Proje bağımlılıklarını ve relation'larını Mermaid diyagramı olarak üret."""
+    from llmbrain.services.graph_generator import graph_to_mermaid, KnowledgeGraph, GraphNode, GraphEdge
+    from llmbrain.core.identity import load_or_create_project_identity
+
+    service = ProjectService()
+    root = service._normalize_path(path)
+    project_id = service._project_id_from_path(root)
+    
+    g_json = service.get_graph(project_id)
+    
+    nodes = [
+        GraphNode(id=n["id"], label=n["label"], type=n["type"], metadata=n.get("metadata", {}))
+        for n in g_json.get("nodes", [])
+    ]
+    edges = [
+        GraphEdge(source=e["source"], target=e["target"], relation=e["relation"], 
+                  confidence=e.get("confidence", "medium"), evidence=e.get("evidence", ""))
+        for e in g_json.get("edges", [])
+    ]
+    
+    kg = KnowledgeGraph(project_id=project_id, nodes=nodes, edges=edges)
+    mermaid_out = graph_to_mermaid(kg)
+    
+    if output:
+        Path(output).write_text(mermaid_out, encoding="utf-8")
+        console.print(f"[bold green]Saved mermaid diagram to {output}[/bold green]")
+    else:
+        console.print(mermaid_out)
+
+
+@app.command()
+def drift(
+    path: str = typer.Option(".", "--path", help="Proje dizini"),
+    provider: str = typer.Option("mock", "--provider", help="LLM provider (e.g., mock, openai)"),
+):
+    """Dokümantasyon ile kod arasındaki anlam kaymalarını (drift) analiz et."""
+    import asyncio
+    from llmbrain.services.drift_detection import DriftDetector
+    from llmbrain.core.identity import load_or_create_project_identity
+    from llmbrain.llm.providers import create_provider
+
+    service = ProjectService()
+    root = service._normalize_path(path)
+    project_id = service._project_id_from_path(root)
+
+    llm = create_provider(provider)
+    detector = DriftDetector(project_id, service, llm)
+    
+    console.print(f"Analyzing documentation drift for project: {project_id} using {provider}...")
+    reports = asyncio.run(detector.analyze_drift())
+    
+    if not reports:
+        console.print("[green]Hiç drift veya dokümantasyon bulunamadı.[/green]")
+        return
+        
+    table = Table("Page", "Drift?", "Risk", "Rationale")
+    for r in reports:
+        drift_str = "[red]Yes[/red]" if r.is_drifting else "[green]No[/green]"
+        risk_color = "red" if r.risk_level == "high" else "yellow" if r.risk_level == "medium" else "green"
+        risk_str = f"[{risk_color}]{r.risk_level}[/{risk_color}]"
+        table.add_row(r.wiki_title, drift_str, risk_str, r.rationale)
+        
+    console.print(table)
+
+
+@app.command("pr-review")
+def pr_review(
+    path: str = typer.Option(".", "--path", help="Proje dizini"),
+    base_ref: str = typer.Option("origin/main", "--base", help="Karşılaştırılacak base branch"),
+    provider: str = typer.Option("mock", "--provider", help="LLM provider"),
+):
+    """Değişen dosyaların semantic analizi ile Pull Request review yorumları oluştur."""
+    import asyncio
+    from llmbrain.services.pr_review import PRReviewer
+    from llmbrain.llm.providers import create_provider
+
+    service = ProjectService()
+    root = service._normalize_path(path)
+    project_id = service._project_id_from_path(root)
+
+    llm = create_provider(provider)
+    reviewer = PRReviewer(project_id, service, llm)
+    
+    console.print(f"Generating PR review against '{base_ref}' using {provider}...")
+    comments = asyncio.run(reviewer.generate_review(path, base_ref))
+    
+    if not comments:
+        console.print("[green]No issues found. LGTM![/green]")
+        return
+        
+    table = Table("File", "Line", "Severity", "Comment")
+    for c in comments:
+        color = "red" if c.severity == "critical" else "yellow" if c.severity == "warning" else "blue"
+        table.add_row(
+            c.file_path, 
+            str(c.line_number) if c.line_number else "-", 
+            f"[{color}]{c.severity}[/{color}]", 
+            c.comment
+        )
+        
+    console.print(table)
 
 
 @app.command()
@@ -562,6 +670,32 @@ def memory_refresh(
         raise typer.Exit(code=1)
 
 
+@memory_app.command("export")
+def memory_export(
+    path: str = typer.Option(".", "--path", help="Project path"),
+    output: str = typer.Option(None, "--output", help="Output JSONL file path"),
+):
+    """Export project vectors and metadata to a JSONL file."""
+    service = ProjectService()
+    try:
+        p = Path(path).resolve()
+        proj = service.get_project_by_path(str(p))
+        if not proj:
+            console.print(f"[bold red]Project not found for path: {p}[/bold red]")
+            raise typer.Exit(code=1)
+        
+        out_path = Path(output) if output else p / "memory_export.jsonl"
+        from llmbrain.storage.vector_store import VectorStore
+        vs = VectorStore(output_root(proj.root_path) / "vectors.db")
+        count = vs.export_jsonl(proj.id, out_path)
+        vs.close()
+        
+        console.print(f"[bold green]Exported {count} vectors to {out_path}[/bold green]")
+    except Exception as e:
+        err_console.print(f"[bold red]Hata: {e}[/bold red]")
+        raise typer.Exit(code=1)
+
+
 @app.command()
 def config():
     """Print active configuration settings."""
@@ -860,7 +994,7 @@ def sessions_resume_cmd(
     """Resume a coding session and start the TUI for it."""
     import asyncio
 
-    from llmbrain.app.tui import LLMBrainTUI
+    from llmbrain.tui import LLMBrainTUI
 
     p = Path(path).resolve()
     tui = LLMBrainTUI(p)
@@ -1251,7 +1385,7 @@ def main_callback(
 
         import asyncio
 
-        from llmbrain.app.tui import LLMBrainTUI
+        from llmbrain.tui import LLMBrainTUI
 
         path = "."
         provider = settings.default_provider

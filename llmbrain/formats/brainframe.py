@@ -10,6 +10,8 @@ import re
 from collections.abc import Mapping
 from typing import Any
 
+from llmbrain.services.token_budget import estimate_tokens
+
 DEFAULT_CELL_MAX_CHARS = 240
 DEFAULT_CONTEXT_MAX_CHARS = 120_000
 
@@ -110,9 +112,12 @@ def _section(title: str, headers: list[str], rows: list[list[Any]]) -> str:
     return f"#{title}\n" + _table(headers, rows)
 
 
-def _fits(parts: list[str], candidate: str, max_chars: int, truncated: bool = False) -> bool:
+def _fits(parts: list[str], candidate: str, max_chars: int, max_tokens: int | None = None, truncated: bool = False) -> bool:
     suffix = "\n@truncated true\n" if truncated else "\n"
-    return len("\n\n".join([*parts, candidate]) + suffix) <= max_chars
+    content = "\n\n".join([*parts, candidate]) + suffix
+    if max_tokens is not None:
+        return estimate_tokens(content) <= max_tokens
+    return len(content) <= max_chars
 
 
 def _append_section(
@@ -121,18 +126,19 @@ def _append_section(
     headers: list[str],
     rows: list[list[Any]],
     max_chars: int,
+    max_tokens: int | None = None,
 ) -> bool:
     accepted: list[list[Any]] = []
     truncated = False
     for row in rows:
         candidate = _section(title, headers, [*accepted, row])
-        if _fits(parts, candidate, max_chars):
+        if _fits(parts, candidate, max_chars, max_tokens):
             accepted.append(row)
             continue
         truncated = True
         break
     candidate = _section(title, headers, accepted)
-    if not _fits(parts, candidate, max_chars, truncated=truncated):
+    if not _fits(parts, candidate, max_chars, max_tokens, truncated=truncated):
         candidate = _section(title, headers, [])
         truncated = truncated or bool(rows)
     parts.append(candidate)
@@ -146,6 +152,7 @@ def build_brainframe_context(
     relations: list[Any],
     facts: list[Any],
     max_chars: int = DEFAULT_CONTEXT_MAX_CHARS,
+    max_tokens: int | None = None,
 ) -> str:
     """Build compact BrainFrame context without JSON or repeated keys."""
 
@@ -173,6 +180,7 @@ def build_brainframe_context(
         ["id", "type", "name", "path", "confidence"],
         entity_rows,
         max_chars,
+        max_tokens,
     )
     truncated |= _append_section(
         parts,
@@ -180,6 +188,7 @@ def build_brainframe_context(
         ["from", "relation", "to", "evidence", "confidence"],
         _relation_rows(relations, entity_index),
         max_chars,
+        max_tokens,
     )
     truncated |= _append_section(
         parts,
@@ -187,6 +196,7 @@ def build_brainframe_context(
         ["id", "subject", "predicate", "object", "evidence", "confidence"],
         _fact_rows(facts),
         max_chars,
+        max_tokens,
     )
 
     output = "\n\n".join(parts)
@@ -204,11 +214,12 @@ def build_compact_context(
     entity_index: dict[str, Any] | None = None,
     project_id: str = "",
     max_chars: int = DEFAULT_CONTEXT_MAX_CHARS,
+    max_tokens: int | None = None,
 ) -> str:
     """Backward-compatible alias for older callers."""
 
     _ = entity_index
-    return build_brainframe_context(project_name, project_id, entities, relations, facts, max_chars)
+    return build_brainframe_context(project_name, project_id, entities, relations, facts, max_chars, max_tokens)
 
 
 __all__ = [

@@ -130,15 +130,15 @@ class SemanticSearchService:
         source_types: list[str] | None = None,
         k: int = 10,
         threshold: float = 0.25,
+        hybrid: bool = True,
     ) -> list[SearchResult]:
-        """Embed query, search each source type, merge and return top-k results."""
+        """Hybrid search combining semantic vectors and FTS5 using Reciprocal Rank Fusion."""
         if not self.embedder.is_fitted:
-            # Nothing indexed yet
             return []
 
         query_vec = self.embedder.embed(query)
         types = source_types or ["chunk", "fact", "entity"]
-        all_results: list[SearchResult] = []
+        vector_results: list[SearchResult] = []
 
         for stype in types:
             hits = self.vector_store.search(
@@ -149,7 +149,7 @@ class SemanticSearchService:
                 threshold=threshold,
             )
             for rec, score in hits:
-                all_results.append(
+                vector_results.append(
                     SearchResult(
                         source_type=stype,
                         source_id=rec.source_id,
@@ -158,8 +158,49 @@ class SemanticSearchService:
                     )
                 )
 
-        all_results.sort(key=lambda r: r.score, reverse=True)
-        return all_results[:k]
+        fts_results = []
+        if hybrid:
+            fts_hits = self.store.search_fts(self.project_id, query, limit=k * 2)
+            for hit in fts_hits:
+                if hit["source_type"] in types:
+                    fts_results.append(hit)
+
+        if hybrid and fts_results:
+            return self._rrf_merge(vector_results, fts_results, k)
+        else:
+            vector_results.sort(key=lambda r: r.score, reverse=True)
+            return vector_results[:k]
+
+    def _rrf_merge(
+        self, vec_results: list[SearchResult], fts_results: list[dict], k: int
+    ) -> list[SearchResult]:
+        rrf_k = 60
+        scores: dict[str, float] = {}
+        items: dict[str, SearchResult] = {}
+
+        vec_results.sort(key=lambda r: r.score, reverse=True)
+        for rank, res in enumerate(vec_results):
+            key = f"{res.source_type}:{res.source_id}"
+            scores[key] = scores.get(key, 0.0) + 1.0 / (rrf_k + rank + 1)
+            items[key] = res
+
+        for rank, hit in enumerate(fts_results):
+            key = f"{hit['source_type']}:{hit['id']}"
+            scores[key] = scores.get(key, 0.0) + 1.0 / (rrf_k + rank + 1)
+            if key not in items:
+                items[key] = SearchResult(
+                    source_type=hit["source_type"],
+                    source_id=hit["id"],
+                    score=0.0,
+                    text_preview=hit["text_content"][:200],
+                )
+
+        for key, item in items.items():
+            item.score = round(scores[key], 4)
+
+        merged = list(items.values())
+        merged.sort(key=lambda r: r.score, reverse=True)
+        return merged[:k]
 
     def get_stats(self) -> dict:
         """Return indexing stats from the vector store."""

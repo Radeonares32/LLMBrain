@@ -172,6 +172,22 @@ class TestVectorStore:
         assert len(all_recs) == 1
         assert all_recs[0].vector == [0.9]
 
+    def test_export_jsonl(self, tmp_path):
+        vs = _tmp_vs(tmp_path)
+        vs.upsert("p1", "type1", "s1", "txt1", [0.1])
+        vs.upsert("p1", "type1", "s2", "txt2", [0.2])
+        out_path = tmp_path / "export.jsonl"
+        count = vs.export_jsonl("p1", out_path)
+        assert count == 2
+        assert out_path.exists()
+        import json
+        with open(out_path, "r", encoding="utf-8") as f:
+            lines = f.readlines()
+            assert len(lines) == 2
+            data = json.loads(lines[0])
+            assert "vector" in data
+            assert data["project_id"] == "p1"
+
     def test_upsert_batch(self, tmp_path):
         vs = _tmp_vs(tmp_path)
         records = [
@@ -417,6 +433,43 @@ class TestSemanticSearchService:
         with patch("llmbrain.storage.sqlite.SQLiteStore"):
             svc = create_search_service("proj-test", tmp_path)
             assert svc.project_id == "proj-test"
+
+    def test_hybrid_search(self, tmp_path):
+        svc = self._make_service(tmp_path)
+        # Mock the FTS search result
+        svc.store.search_fts.return_value = [
+            {
+                "id": "c1",
+                "source_type": "chunk",
+                "text_content": "python hybrid search chunk",
+                "score": -0.5
+            }
+        ]
+        
+        # Add vector hits
+        svc.index_chunks(
+            [
+                {
+                    "id": "c1",
+                    "content": "python hybrid search chunk",
+                    "path": "x.py",
+                    "start_line": 1,
+                    "end_line": 5,
+                },
+                {
+                    "id": "c2",
+                    "content": "something else entirely",
+                    "path": "y.py",
+                    "start_line": 1,
+                    "end_line": 5,
+                }
+            ]
+        )
+        
+        # Test hybrid search
+        results = svc.search("python hybrid search", source_types=["chunk"], k=5, hybrid=True)
+        assert len(results) > 0
+        assert results[0].source_id == "c1"  # c1 should be boosted by RRF
 
 
 # ─────────────────────────────────────────────────────────────────────────────

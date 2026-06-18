@@ -171,6 +171,14 @@ class VectorStore:
             rows = cur.fetchall()
         return [_row_to_record(row) for row in rows]
 
+    # ── export ────────────────────────────────────────────────────────
+
+    def export_jsonl(self, project_id: str, output_path: str | Path) -> int:
+        """Export all vector records for a project to a JSONL file."""
+        records = self.get_all(project_id)
+        from llmbrain.storage.jsonl import write_jsonl
+        return write_jsonl(output_path, records)
+
     # ── delete ────────────────────────────────────────────────────────
 
     def delete_project(self, project_id: str) -> int:

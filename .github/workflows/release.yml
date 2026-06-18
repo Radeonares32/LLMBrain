@@ -35,9 +35,11 @@ jobs:
     - name: Create Release
       uses: softprops/action-gh-release@v2
       with:
+        files: dist/*
         generate_release_notes: true
       
     - name: Publish to PyPI
+      if: "${{ secrets.PYPI_API_TOKEN != '' }}"
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
         password: ${{ secrets.PYPI_API_TOKEN }}

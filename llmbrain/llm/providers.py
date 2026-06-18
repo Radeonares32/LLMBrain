@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import os
 import re
-from typing import Any
+from typing import Any, AsyncGenerator, Callable
 
 import httpx
 from dotenv import load_dotenv
@@ -71,7 +71,9 @@ class OpenAICompatibleProvider(BaseLLMProvider):
         self.base_url = base_url.rstrip("/")
         self.use_json_schema = use_json_schema
 
-    async def generate(self, request: LLMRequest) -> LLMResponse:
+    async def generate(
+        self, request: LLMRequest, stream_callback: Callable[[str], None] | None = None
+    ) -> LLMResponse:
         payload: dict[str, Any] = {
             "model": request.model or self.model,
             "messages": [
@@ -81,10 +83,46 @@ class OpenAICompatibleProvider(BaseLLMProvider):
             "temperature": request.temperature,
             "max_tokens": request.max_tokens,
         }
-        raw, usage = await self._post_chat(payload)
+        if stream_callback:
+            payload["stream"] = True
+        raw, usage = await self._post_chat(payload, stream_callback=stream_callback)
         return LLMResponse(raw=raw, model=payload["model"], usage_tokens=usage)
 
-    async def generate_structured(self, request: LLMRequest, schema: dict) -> LLMResponse:
+    async def stream(self, request: LLMRequest) -> AsyncGenerator[str, None]:
+        payload: dict[str, Any] = {
+            "model": request.model or self.model,
+            "messages": [
+                {"role": "system", "content": request.system_prompt},
+                {"role": "user", "content": request.prompt},
+            ],
+            "temperature": request.temperature,
+            "max_tokens": request.max_tokens,
+            "stream": True,
+        }
+        headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
+        try:
+            async with httpx.AsyncClient(timeout=120) as client:
+                async with client.stream("POST", f"{self.base_url}/chat/completions", headers=headers, json=payload) as response:
+                    response.raise_for_status()
+                    async for line in response.aiter_lines():
+                        if line.startswith("data: "):
+                            data = line[6:].strip()
+                            if data == "[DONE]":
+                                break
+                            try:
+                                chunk = json.loads(data)
+                                if chunk.get("choices") and chunk["choices"][0].get("delta"):
+                                    content = chunk["choices"][0]["delta"].get("content")
+                                    if content:
+                                        yield content
+                            except json.JSONDecodeError:
+                                pass
+        except httpx.HTTPError as exc:
+            raise LLMProviderError(f"{self.name} stream request failed: {exc}") from exc
+
+    async def generate_structured(
+        self, request: LLMRequest, schema: dict, stream_callback: Callable[[str], None] | None = None
+    ) -> LLMResponse:
         model = request.model or self.model
         payload: dict[str, Any] = {
             "model": model,
@@ -95,6 +133,9 @@ class OpenAICompatibleProvider(BaseLLMProvider):
             "temperature": request.temperature,
             "max_tokens": request.max_tokens,
         }
+        if stream_callback:
+            payload["stream"] = True
+            
         if self.use_json_schema:
             payload["response_format"] = {
                 "type": "json_schema",
@@ -107,29 +148,49 @@ class OpenAICompatibleProvider(BaseLLMProvider):
         else:
             payload["response_format"] = {"type": "json_object"}
 
-        raw, usage = await self._post_chat(payload)
+        raw, usage = await self._post_chat(payload, stream_callback=stream_callback)
         return _structured_response(raw, model, usage, schema)
 
-    async def _post_chat(self, payload: dict[str, Any]) -> tuple[str, int]:
+    async def _post_chat(self, payload: dict[str, Any], stream_callback: Callable[[str], None] | None = None) -> tuple[str, int]:
         headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
+        raw_content = ""
+        usage = 0
         try:
             async with httpx.AsyncClient(timeout=120) as client:
-                response = await client.post(
-                    f"{self.base_url}/chat/completions",
-                    headers=headers,
-                    json=payload,
-                )
-                response.raise_for_status()
+                if stream_callback:
+                    async with client.stream("POST", f"{self.base_url}/chat/completions", headers=headers, json=payload) as response:
+                        response.raise_for_status()
+                        async for line in response.aiter_lines():
+                            if line.startswith("data: "):
+                                data = line[6:].strip()
+                                if data == "[DONE]":
+                                    break
+                                try:
+                                    chunk = json.loads(data)
+                                    if chunk.get("choices") and chunk["choices"][0].get("delta"):
+                                        content = chunk["choices"][0]["delta"].get("content")
+                                        if content:
+                                            raw_content += content
+                                            stream_callback(content)
+                                except json.JSONDecodeError:
+                                    pass
+                else:
+                    response = await client.post(
+                        f"{self.base_url}/chat/completions",
+                        headers=headers,
+                        json=payload,
+                    )
+                    response.raise_for_status()
+                    data = response.json()
+                    try:
+                        raw_content = data["choices"][0]["message"]["content"]
+                    except (KeyError, IndexError, TypeError) as exc:
+                        raise LLMProviderError(f"{self.name} returned an unexpected response shape.") from exc
+                    usage = int((data.get("usage") or {}).get("total_tokens") or 0)
         except httpx.HTTPError as exc:
             raise LLMProviderError(f"{self.name} request failed: {exc}") from exc
 
-        data = response.json()
-        try:
-            raw = data["choices"][0]["message"]["content"]
-        except (KeyError, IndexError, TypeError) as exc:
-            raise LLMProviderError(f"{self.name} returned an unexpected response shape.") from exc
-        usage = int((data.get("usage") or {}).get("total_tokens") or 0)
-        return raw or "", usage
+        return raw_content or "", usage
 
 
 class AnthropicProvider(BaseLLMProvider):
@@ -141,22 +202,20 @@ class AnthropicProvider(BaseLLMProvider):
         self.model = model
         self.base_url = base_url.rstrip("/")
 
-    async def generate(self, request: LLMRequest) -> LLMResponse:
-        raw, usage = await self._post_messages(request, request.system_prompt)
+    async def generate(
+        self, request: LLMRequest, stream_callback: Callable[[str], None] | None = None
+    ) -> LLMResponse:
+        raw, usage = await self._post_messages(request, request.system_prompt, stream_callback=stream_callback)
         return LLMResponse(raw=raw, model=request.model or self.model, usage_tokens=usage)
 
-    async def generate_structured(self, request: LLMRequest, schema: dict) -> LLMResponse:
-        system_prompt = request.system_prompt or _system_prompt(schema)
-        raw, usage = await self._post_messages(request, system_prompt)
-        return _structured_response(raw, request.model or self.model, usage, schema)
-
-    async def _post_messages(self, request: LLMRequest, system_prompt: str) -> tuple[str, int]:
+    async def stream(self, request: LLMRequest) -> AsyncGenerator[str, None]:
         payload = {
             "model": request.model or self.model,
-            "system": system_prompt,
+            "system": request.system_prompt,
             "messages": [{"role": "user", "content": request.prompt}],
             "temperature": request.temperature,
             "max_tokens": request.max_tokens,
+            "stream": True,
         }
         headers = {
             "x-api-key": self.api_key,
@@ -165,21 +224,88 @@ class AnthropicProvider(BaseLLMProvider):
         }
         try:
             async with httpx.AsyncClient(timeout=120) as client:
-                response = await client.post(
-                    f"{self.base_url}/messages",
-                    headers=headers,
-                    json=payload,
-                )
-                response.raise_for_status()
+                async with client.stream("POST", f"{self.base_url}/messages", headers=headers, json=payload) as response:
+                    response.raise_for_status()
+                    async for line in response.aiter_lines():
+                        if line.startswith("data: "):
+                            data_str = line[6:].strip()
+                            if not data_str:
+                                continue
+                            try:
+                                data = json.loads(data_str)
+                                if data.get("type") == "content_block_delta":
+                                    yield data["delta"]["text"]
+                            except json.JSONDecodeError:
+                                pass
+        except httpx.HTTPError as exc:
+            raise LLMProviderError(f"anthropic stream request failed: {exc}") from exc
+
+    async def generate_structured(
+        self, request: LLMRequest, schema: dict, stream_callback: Callable[[str], None] | None = None
+    ) -> LLMResponse:
+        system_prompt = request.system_prompt or _system_prompt(schema)
+        raw, usage = await self._post_messages(request, system_prompt, stream_callback=stream_callback)
+        return _structured_response(raw, request.model or self.model, usage, schema)
+
+    async def _post_messages(self, request: LLMRequest, system_prompt: str, stream_callback: Callable[[str], None] | None = None) -> tuple[str, int]:
+        payload = {
+            "model": request.model or self.model,
+            "system": system_prompt,
+            "messages": [{"role": "user", "content": request.prompt}],
+            "temperature": request.temperature,
+            "max_tokens": request.max_tokens,
+        }
+        if stream_callback:
+            payload["stream"] = True
+
+        headers = {
+            "x-api-key": self.api_key,
+            "anthropic-version": "2023-06-01",
+            "Content-Type": "application/json",
+        }
+        
+        raw_content = ""
+        usage = 0
+        try:
+            async with httpx.AsyncClient(timeout=120) as client:
+                if stream_callback:
+                    async with client.stream("POST", f"{self.base_url}/messages", headers=headers, json=payload) as response:
+                        response.raise_for_status()
+                        async for line in response.aiter_lines():
+                            if line.startswith("data: "):
+                                data_str = line[6:].strip()
+                                if not data_str:
+                                    continue
+                                try:
+                                    data = json.loads(data_str)
+                                    if data.get("type") == "content_block_delta":
+                                        content = data["delta"]["text"]
+                                        raw_content += content
+                                        stream_callback(content)
+                                    elif data.get("type") == "message_start":
+                                        usage_data = data.get("message", {}).get("usage", {})
+                                        usage += int(usage_data.get("input_tokens") or 0)
+                                    elif data.get("type") == "message_delta":
+                                        usage_data = data.get("usage", {})
+                                        usage += int(usage_data.get("output_tokens") or 0)
+                                except json.JSONDecodeError:
+                                    pass
+                else:
+                    response = await client.post(
+                        f"{self.base_url}/messages",
+                        headers=headers,
+                        json=payload,
+                    )
+                    response.raise_for_status()
+                    data = response.json()
+                    blocks = data.get("content") or []
+                    raw_content = "\n".join(block.get("text", "") for block in blocks if block.get("type") == "text")
+                    usage_data = data.get("usage") or {}
+                    usage = int(usage_data.get("input_tokens") or 0) + int(usage_data.get("output_tokens") or 0)
         except httpx.HTTPError as exc:
             raise LLMProviderError(f"anthropic request failed: {exc}") from exc
 
-        data = response.json()
-        blocks = data.get("content") or []
-        raw = "\n".join(block.get("text", "") for block in blocks if block.get("type") == "text")
-        usage_data = data.get("usage") or {}
-        usage = int(usage_data.get("input_tokens") or 0) + int(usage_data.get("output_tokens") or 0)
-        return raw, usage
+        return raw_content, usage
 
 
 class OllamaProvider(BaseLLMProvider):
@@ -190,14 +316,40 @@ class OllamaProvider(BaseLLMProvider):
         self.model = model
         self.base_url = base_url.rstrip("/")
 
-    async def generate(self, request: LLMRequest) -> LLMResponse:
+    async def generate(
+        self, request: LLMRequest, stream_callback: Callable[[str], None] | None = None
+    ) -> LLMResponse:
         payload = self._payload(request, None)
-        raw, usage = await self._post_chat(payload)
+        if stream_callback:
+            payload["stream"] = True
+        raw, usage = await self._post_chat(payload, stream_callback=stream_callback)
         return LLMResponse(raw=raw, model=payload["model"], usage_tokens=usage)
 
-    async def generate_structured(self, request: LLMRequest, schema: dict) -> LLMResponse:
+    async def stream(self, request: LLMRequest) -> AsyncGenerator[str, None]:
+        payload = self._payload(request, None)
+        payload["stream"] = True
+        try:
+            async with httpx.AsyncClient(timeout=120) as client:
+                async with client.stream("POST", f"{self.base_url}/api/chat", json=payload) as response:
+                    response.raise_for_status()
+                    async for line in response.aiter_lines():
+                        if line:
+                            try:
+                                data = json.loads(line)
+                                if "message" in data and "content" in data["message"]:
+                                    yield data["message"]["content"]
+                            except json.JSONDecodeError:
+                                pass
+        except httpx.HTTPError as exc:
+            raise LLMProviderError(f"ollama stream request failed: {exc}") from exc
+
+    async def generate_structured(
+        self, request: LLMRequest, schema: dict, stream_callback: Callable[[str], None] | None = None
+    ) -> LLMResponse:
         payload = self._payload(request, schema)
-        raw, usage = await self._post_chat(payload)
+        if stream_callback:
+            payload["stream"] = True
+        raw, usage = await self._post_chat(payload, stream_callback=stream_callback)
         return _structured_response(raw, payload["model"], usage, schema)
 
     def _payload(self, request: LLMRequest, schema: dict | None) -> dict[str, Any]:
@@ -217,18 +369,36 @@ class OllamaProvider(BaseLLMProvider):
             payload["format"] = schema
         return payload
 
-    async def _post_chat(self, payload: dict[str, Any]) -> tuple[str, int]:
+    async def _post_chat(self, payload: dict[str, Any], stream_callback: Callable[[str], None] | None = None) -> tuple[str, int]:
+        raw_content = ""
+        usage = 0
         try:
             async with httpx.AsyncClient(timeout=120) as client:
-                response = await client.post(f"{self.base_url}/api/chat", json=payload)
-                response.raise_for_status()
+                if stream_callback:
+                    async with client.stream("POST", f"{self.base_url}/api/chat", json=payload) as response:
+                        response.raise_for_status()
+                        async for line in response.aiter_lines():
+                            if line:
+                                try:
+                                    data = json.loads(line)
+                                    if "message" in data and "content" in data["message"]:
+                                        content = data["message"]["content"]
+                                        raw_content += content
+                                        stream_callback(content)
+                                    if data.get("done"):
+                                        usage = int(data.get("prompt_eval_count") or 0) + int(data.get("eval_count") or 0)
+                                except json.JSONDecodeError:
+                                    pass
+                else:
+                    response = await client.post(f"{self.base_url}/api/chat", json=payload)
+                    response.raise_for_status()
+                    data = response.json()
+                    raw_content = ((data.get("message") or {}).get("content")) or ""
+                    usage = int(data.get("prompt_eval_count") or 0) + int(data.get("eval_count") or 0)
         except httpx.HTTPError as exc:
             raise LLMProviderError(f"ollama request failed: {exc}") from exc
 
-        data = response.json()
-        raw = ((data.get("message") or {}).get("content")) or ""
-        usage = int(data.get("prompt_eval_count") or 0) + int(data.get("eval_count") or 0)
-        return raw, usage
+        return raw_content, usage
 
 
 def _structured_response(raw: str, model: str, usage: int, schema: dict[str, Any]) -> LLMResponse:
@@ -249,7 +419,7 @@ def _structured_response(raw: str, model: str, usage: int, schema: dict[str, Any
     )
 
 
-def create_provider(provider_name: str | None = None) -> BaseLLMProvider:
+def create_provider(provider_name: str | None = None, model_name: str | None = None) -> BaseLLMProvider:
     """Create a configured production LLM provider."""
 
     load_dotenv()
@@ -263,7 +433,7 @@ def create_provider(provider_name: str | None = None) -> BaseLLMProvider:
         return OpenAICompatibleProvider(
             name="openai",
             api_key=api_key,
-            model=_env(
+            model=model_name or _env(
                 "OPENAI_MODEL",
                 "LLMBRAIN_OPENAI_MODEL",
                 default="gpt-4o-mini",
@@ -285,7 +455,7 @@ def create_provider(provider_name: str | None = None) -> BaseLLMProvider:
         return OpenAICompatibleProvider(
             name="deepseek",
             api_key=api_key,
-            model=_env(
+            model=model_name or _env(
                 "DEEPSEEK_MODEL",
                 "LLMBRAIN_DEEPSEEK_MODEL",
                 default="deepseek-chat",
@@ -306,7 +476,7 @@ def create_provider(provider_name: str | None = None) -> BaseLLMProvider:
             raise LLMProviderError("ANTHROPIC_API_KEY is required for provider 'anthropic'.")
         return AnthropicProvider(
             api_key=api_key,
-            model=_env(
+            model=model_name or _env(
                 "ANTHROPIC_MODEL",
                 "LLMBRAIN_ANTHROPIC_MODEL",
                 default="claude-3-5-sonnet-latest",
@@ -321,7 +491,7 @@ def create_provider(provider_name: str | None = None) -> BaseLLMProvider:
         )
 
     if name == "ollama":
-        model = _env("OLLAMA_MODEL", "LLMBRAIN_OLLAMA_MODEL")
+        model = model_name or _env("OLLAMA_MODEL", "LLMBRAIN_OLLAMA_MODEL")
         if not model:
             raise LLMProviderError("OLLAMA_MODEL is required for provider 'ollama'.")
         return OllamaProvider(
@@ -332,7 +502,29 @@ def create_provider(provider_name: str | None = None) -> BaseLLMProvider:
             or "http://localhost:11434",
         )
 
+    if name == "gemini":
+        api_key = _env("GEMINI_API_KEY", "LLMBRAIN_GEMINI_API_KEY")
+        if not api_key:
+            raise LLMProviderError("GEMINI_API_KEY is required for provider 'gemini'.")
+        return OpenAICompatibleProvider(
+            name="gemini",
+            api_key=api_key,
+            model=model_name or _env(
+                "GEMINI_MODEL",
+                "LLMBRAIN_GEMINI_MODEL",
+                default="gemini-2.5-flash",
+            )
+            or "gemini-2.5-flash",
+            base_url=_env(
+                "GEMINI_BASE_URL",
+                "LLMBRAIN_GEMINI_BASE_URL",
+                default="https://generativelanguage.googleapis.com/v1beta/openai/",
+            )
+            or "https://generativelanguage.googleapis.com/v1beta/openai/",
+            use_json_schema=True,
+        )
+
     raise LLMProviderError(
         f"Unsupported provider '{provider_name}'. "
-        "Supported providers: openai, deepseek, anthropic, ollama."
+        "Supported providers: openai, deepseek, anthropic, ollama, gemini."
     )

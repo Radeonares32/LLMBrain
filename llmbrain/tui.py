@@ -32,7 +32,8 @@ class TuiState:
         self.branch_name = "main"
         self.last_indexed_commit = "unknown"
         self.active_agent = "Build"
-        self.active_model = "configured/default"
+        self.active_provider = "openai"
+        self.active_model = ""
         self.permission_mode = "ask-before-write"
         self.is_running = True
 
@@ -92,7 +93,8 @@ class LLMBrainTUI:
 
         self.state = TuiState()
         self.state.project_name = self.session_service.identity.get("name", self.project_root.name)
-        self.state.active_model = self.provider_name
+        self.state.active_provider = self.provider_name
+        self.state.active_model = ""
         self.state.permission_mode = (
             self.session_service.session_store.get_sessions(self.session_service.project_id)[0].get(
                 "permission_mode", "ask-before-write"
@@ -183,8 +185,8 @@ class LLMBrainTUI:
             (" LLMBrain ", "bold reverse cyan"),
             f" │ Project: [green]{self.state.project_name}[/green]",
             f" │ Branch: [magenta]{self.state.branch_name}[/magenta]",
-            f" │ Agent: [yellow]{self.state.active_agent}[/yellow]",
-            f" │ Model: [blue]{self.state.active_model}[/blue]",
+            f" │ Provider: [blue]{self.state.active_provider}[/blue]",
+            f" │ Model: [blue]{self.state.active_model or 'default'}[/blue]",
             f" │ Permissions: [red]{self.state.permission_mode}[/red]  ",
             Text.from_markup(status_txt, justify="right"),
         )
@@ -674,10 +676,15 @@ class LLMBrainTUI:
                         )
             elif slash_cmd == "/model":
                 if args:
-                    self.state.active_model = args
+                    if "/" in args:
+                        p, m = args.split("/", 1)
+                        self.state.active_provider = p
+                        self.state.active_model = m
+                    else:
+                        self.state.active_model = args
                     if self.state.selected_session_id:
                         self.session_service.update_session(
-                            self.state.selected_session_id, model_config={"model": args}
+                            self.state.selected_session_id, model_config={"provider": self.state.active_provider, "model": self.state.active_model}
                         )
             elif slash_cmd == "/permissions":
                 if args in ("read-only", "ask-before-write", "trusted-project"):
@@ -780,7 +787,7 @@ class LLMBrainTUI:
                     prior_messages.append(AgentMessage(role=m["role"], content=m["content"]))
 
             # 3. Setup Agent Runtime
-            llm = create_provider(self.state.active_model)
+            llm = create_provider(self.state.active_provider, self.state.active_model if self.state.active_model else None)
 
             # Custom prompt interceptor for TUI approval workflow
             def intercept_prompt(msg: str) -> bool:
@@ -816,8 +823,11 @@ class LLMBrainTUI:
             # Custom event subscriber to project streaming responses
             def event_listener(event: Any) -> None:
                 if event.event_type == "model_response_received":
-                    # Capture streaming fragments or token updates
-                    pass
+                    self.state.streaming_text = ""
+                elif event.event_type == "model_stream_chunk":
+                    chunk = event.payload.get("chunk", "")
+                    if chunk:
+                        self.state.streaming_text += chunk
                 elif event.event_type == "tool_execution_started":
                     self.session_service.add_tool_call(
                         self.state.selected_session_id,

@@ -42,7 +42,7 @@ That is why the project's philosophy is: **RAG answers questions. LLM Brain buil
 
 From codebase chaos to auditable knowledge, LLM Brain employs a structured pipeline:
 1. **Scanner & Chunker**: Safely parses `.md`, `.py`, `.ts`, `Dockerfile`, etc., ignoring binaries and secrets.
-2. **LLM Extraction**: Integrates via `openai`, `deepseek`, `anthropic`, or `ollama` to extract structured data via strict JSON Schemas.
+2. **LLM Extraction**: Integrates via `openai`, `deepseek`, `anthropic`, `gemini`, or `ollama` to extract structured data via strict JSON Schemas.
 3. **Security & Evidence Layer**: Automatically strips secrets and verifies that extracted facts actually exist in the cited source lines. Hallucinations are demoted in confidence.
 4. **Storage Engine**: Persists data canonically in SQLite and exports as JSONL.
 5. **Generators**: Compiles BrainFrame (`.bf`) token-efficient context, a markdown Wiki, and GraphML maps.
@@ -50,10 +50,11 @@ From codebase chaos to auditable knowledge, LLM Brain employs a structured pipel
 ## Features
 
 - **Evidence-first memory for software teams**: Every fact extracted is tied to a specific `path:Lstart-Lend`.
+- **Hybrid Search**: Advanced dual-engine retrieval combining TF-IDF Vector semantic search and SQLite FTS5 (Full Text Search) via Reciprocal Rank Fusion.
 - **Secret Redaction**: Safely strips out API keys and tokens (e.g. AWS, OpenAI) before they leave your machine.
 - **Hallucination Guard**: Automatically detects facts lacking source evidence and flags them.
 - **CI/CD Ready**: Native GitHub Actions support to detect documentation drift and score PR risks.
-- **Provider Agnostic**: Use Local LLMs or Cloud Providers seamlessly.
+- **Provider Agnostic**: Use Local LLMs or Cloud Providers seamlessly (OpenAI, Anthropic, DeepSeek, Gemini, Ollama).
 
 ## Installation
 
@@ -125,6 +126,7 @@ llmbrain /path/to/project
 The TUI provides a responsive multi-pane dashboard where you can:
 - Ask architecture questions or run coding tasks in chat pane.
 - Interactively approve or deny sensitive operations (`[A] Approve once`, `[S] Approve session`, `[D] Deny`).
+- Use powerful Slash Commands (e.g., `/model gemini/gemini-2.5-flash`, `/agent plan`, `/new`) to instantly control the session context.
 - Inspect workspace Git diffs and run unit tests.
 - View and switch between multiple durable sessions using keyboard shortcuts (Ctrl+X leader commands).
 - Monitor async indexing queue status and CPU/memory resource utilization in the live **Observe Panel** (focus via `Ctrl+X O`).
@@ -141,9 +143,12 @@ LLM Brain is a CLI-first tool. Its commands are organized into core compilation 
 - `llmbrain index PATH`: Builds and refreshes project index database incrementally (uses cached elements based on file hashes).
 - `llmbrain context PATH`: Outputs the generated token-compact BrainFrame (`.bf`) file.
 - `llmbrain diff PATH`: Shows git diffs and tracks memory drift.
+- `llmbrain diagram PATH`: Generates automatic Mermaid JS architecture diagrams from codebase entities and relations.
+- `llmbrain drift PATH`: Detects semantic drift between your Markdown documentation (wiki) and the actual codebase.
+- `llmbrain pr-review PATH`: Generates AI-powered Pull Request review comments based on semantic code changes.
 - `llmbrain health PATH`: Generates an evidence health score for the repository.
 - `llmbrain token-report PATH`: Compares JSON-style context size with BrainFrame context size.
-- `llmbrain search "<query>"`: Performs semantic search over the compiled project memory (chunks, facts, entities) using local embeddings.
+- `llmbrain search "<query>"`: Performs hybrid search over the compiled project memory (chunks, facts, entities) using FTS5 and embeddings.
 - `llmbrain doctor`: Runs diagnostic health checks on databases and the environment.
 - `llmbrain config`: Prints active configuration settings (API providers, models, local directories).
 - `llmbrain logs`: Prints application logs location.

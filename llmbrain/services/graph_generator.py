@@ -71,3 +71,23 @@ def graph_to_graphml(graph: KnowledgeGraph) -> str:
     lines.append("</graphml>")
 
     return "\n".join(lines)
+
+
+def graph_to_mermaid(graph: KnowledgeGraph) -> str:
+    """Render the knowledge graph as a Mermaid JS diagram."""
+    lines = ["graph TD"]
+    
+    # Optional: Group by type if needed, but for simplicity just nodes
+    for node in graph.nodes:
+        # Mermaid doesn't like quotes or special chars in IDs sometimes, but standard alphanumerics are fine
+        safe_id = "".join(c if c.isalnum() else "_" for c in node.id)
+        safe_label = str(node.label).replace('"', "'")
+        lines.append(f'    {safe_id}["{safe_label} ({node.type})"]')
+
+    for i, edge in enumerate(graph.edges):
+        safe_source = "".join(c if c.isalnum() else "_" for c in edge.source)
+        safe_target = "".join(c if c.isalnum() else "_" for c in edge.target)
+        safe_relation = str(edge.relation).replace('"', "'")
+        lines.append(f'    {safe_source} -->|{safe_relation}| {safe_target}')
+
+    return "\n".join(lines)

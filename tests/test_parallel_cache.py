@@ -1,5 +1,6 @@
 import time
 from pathlib import Path
+from typing import AsyncGenerator
 
 import pytest
 
@@ -17,10 +18,13 @@ class SlowProvider(BaseLLMProvider):
     def __init__(self) -> None:
         self.calls = 0
 
-    async def generate(self, request: LLMRequest) -> LLMResponse:
+    async def generate(self, request: LLMRequest, stream_callback=None) -> LLMResponse:
         return LLMResponse(raw="{}")
 
-    async def generate_structured(self, request: LLMRequest, schema: dict) -> LLMResponse:
+    async def stream(self, request: LLMRequest):
+        yield "{}"
+
+    async def generate_structured(self, request: LLMRequest, schema: dict, stream_callback=None) -> LLMResponse:
         import asyncio
 
         self.calls += 1

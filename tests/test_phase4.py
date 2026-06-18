@@ -1,4 +1,5 @@
 import json
+from typing import Any, Callable
 
 import pytest
 
@@ -30,10 +31,11 @@ class MockModelProvider(ModelProvider):
         self.responses = responses
         self.call_count = 0
 
-    async def complete(
+    async def generate(
         self,
         request: ModelRequest,
         cancellation_token: CancellationToken | None = None,
+        stream_callback: Callable[[str], None] | None = None,
     ) -> ModelResponse:
         if self.call_count < len(self.responses):
             resp = self.responses[self.call_count]
